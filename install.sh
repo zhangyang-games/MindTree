@@ -25,8 +25,8 @@ mkdir -p "$INSTALL_DIR"
 
 # ── 2. 下载文件 ──
 echo "▶ 从 GitHub 下载文件..."
-curl -fsSL "$REPO/server.py"   -o "$INSTALL_DIR/server.py"
-curl -fsSL "$REPO/index.html"  -o "$INSTALL_DIR/index.html"
+curl -fsSL "$REPO/server.py"  -o "$INSTALL_DIR/server.py"
+curl -fsSL "$REPO/index.html" -o "$INSTALL_DIR/index.html"
 echo "  ✓ server.py"
 echo "  ✓ index.html"
 
@@ -43,9 +43,7 @@ fi
 
 # ── 4. 安装 Python 依赖 ──
 echo "▶ 安装 Python 依赖 (fastapi, uvicorn)..."
-if $PYTHON -m pip install fastapi uvicorn --quiet --break-system-packages 2>/dev/null; then
-    echo "  ✓ 依赖安装完成"
-elif $PYTHON -m pip install fastapi uvicorn --quiet 2>/dev/null; then
+if $PYTHON -m pip install fastapi uvicorn --quiet 2>/dev/null; then
     echo "  ✓ 依赖安装完成"
 else
     echo "  ✗ 依赖安装失败，请查看错误信息"
@@ -53,11 +51,11 @@ else
     exit 1
 fi
 
-# ── 检测当前用户 ──
+# ── 5. 检测当前用户和 Python 路径 ──
 CURRENT_USER=$(whoami)
 PYTHON_PATH=$(command -v python3 || command -v python)
 
-# ── 5. 创建 systemd 服务 ──
+# ── 6. 创建 systemd 服务 ──
 echo "▶ 创建系统服务 $SERVICE_NAME ..."
 
 tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
@@ -78,7 +76,7 @@ EOF
 
 echo "  ✓ 服务文件已创建"
 
-# ── 6. 启动服务 ──
+# ── 7. 启动服务 ──
 echo "▶ 启动 MindTree 服务..."
 systemctl daemon-reload
 systemctl enable "$SERVICE_NAME" --quiet
@@ -86,16 +84,16 @@ systemctl restart "$SERVICE_NAME"
 
 sleep 2
 
-# ── 7. 检查状态 ──
+# ── 8. 检查状态 ──
 if systemctl is-active --quiet "$SERVICE_NAME"; then
     echo "  ✓ 服务运行正常"
 else
     echo "  ✗ 服务启动失败，查看日志："
-    echo "    sudo journalctl -u $SERVICE_NAME -n 30"
+    echo "    journalctl -u $SERVICE_NAME -n 30"
     exit 1
 fi
 
-# ── 8. 完成 ──
+# ── 9. 完成 ──
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 echo ""
 echo "╔══════════════════════════════════════╗"

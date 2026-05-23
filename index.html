@@ -3,170 +3,327 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MindTree · 思维导图</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>MindTree</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #0e0f11;
-  --surface: #161719;
-  --panel: #1c1d20;
-  --border: #2a2b2f;
-  --border-light: #35363c;
-  --text: #e2e0d8;
-  --text-dim: #7a7870;
-  --text-mid: #a8a69e;
-  --accent: #c8a96e;
-  --accent-dim: #7a6640;
-  --accent-glow: rgba(200,169,110,0.15);
-  --danger: #c86e6e;
-  --green: #6ec87a;
-  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --bg: #f5f5f0;
+  --panel-bg: #ffffff;
+  --text: #333;
+  --text-dim: #999;
+  --border: #e0e0e0;
+  --accent: #4a9d6f;
+  --shadow: 0 2px 12px rgba(0,0,0,0.1);
+  /* Branch palette - Coggle-like warm tones */
+  --c0: #e8735a; /* root warm red */
+  --c1: #e8a23a;
+  --c2: #6db56d;
+  --c3: #5a9fd4;
+  --c4: #a06db5;
+  --c5: #d45a9f;
+  --c6: #5ab5b5;
+  --c7: #b5a05a;
 }
 
-html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'Noto Serif SC',serif; overflow:hidden; }
+html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'Noto Sans SC',sans-serif; overflow:hidden; }
 
-#list-view { width:100%; height:100%; display:flex; flex-direction:column; align-items:center; overflow-y:auto; padding:60px 24px 40px; }
-.list-header { width:100%; max-width:680px; margin-bottom:48px; }
-.list-header h1 { font-size:2.2rem; font-weight:600; letter-spacing:0.04em; color:var(--accent); margin-bottom:4px; }
-.list-header p { color:var(--text-dim); font-size:0.85rem; font-family:'JetBrains Mono',monospace; letter-spacing:0.06em; }
+/* ── LIST VIEW ── */
+#list-view {
+  width:100%; height:100%;
+  display:flex; flex-direction:column; align-items:center;
+  overflow-y:auto; padding:48px 24px 40px;
+  background: var(--bg);
+}
 
-.new-map-btn { display:flex; align-items:center; gap:10px; background:var(--accent-glow); border:1px solid var(--accent-dim); color:var(--accent); padding:14px 28px; border-radius:4px; cursor:pointer; font-family:'Noto Serif SC',serif; font-size:0.95rem; letter-spacing:0.06em; transition:all 0.2s; margin-bottom:40px; width:100%; max-width:680px; justify-content:center; }
-.new-map-btn:hover { background:rgba(200,169,110,0.25); border-color:var(--accent); }
+.list-top {
+  width:100%; max-width:640px;
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:32px;
+}
 
-.maps-grid { width:100%; max-width:680px; display:flex; flex-direction:column; gap:10px; }
-.map-card { background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:18px 20px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.map-card:hover { border-color:var(--accent-dim); background:var(--surface); transform:translateX(3px); }
-.map-card-title { font-size:1rem; font-weight:600; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.map-card-meta { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-dim); white-space:nowrap; flex-shrink:0; }
-.map-card-delete { background:none; border:none; color:var(--text-dim); cursor:pointer; padding:4px; border-radius:3px; display:flex; transition:color 0.15s; flex-shrink:0; }
-.map-card-delete:hover { color:var(--danger); }
-.empty-state { text-align:center; color:var(--text-dim); font-family:'JetBrains Mono',monospace; font-size:0.8rem; padding:48px 0; letter-spacing:0.05em; }
+.list-logo {
+  font-size:1.4rem; font-weight:500; color:#555;
+  letter-spacing:0.02em;
+}
+.list-logo span { color:var(--c0); }
 
+.new-btn {
+  display:flex; align-items:center; gap:8px;
+  background: var(--c0); color:#fff;
+  border:none; padding:9px 20px; border-radius:20px;
+  cursor:pointer; font-family:'Noto Sans SC',sans-serif;
+  font-size:0.88rem; font-weight:500;
+  transition:filter 0.15s; box-shadow: 0 2px 8px rgba(232,115,90,0.35);
+}
+.new-btn:hover { filter:brightness(1.08); }
+
+.maps-grid { width:100%; max-width:640px; display:flex; flex-direction:column; gap:8px; }
+
+.map-card {
+  background:var(--panel-bg); border:1px solid var(--border);
+  border-radius:10px; padding:16px 18px;
+  cursor:pointer; transition:all 0.18s;
+  display:flex; align-items:center; gap:14px;
+}
+.map-card:hover { box-shadow:var(--shadow); border-color:#ccc; transform:translateY(-1px); }
+
+.map-card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.map-card-title { font-size:0.95rem; font-weight:500; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.map-card-meta { font-size:0.75rem; color:var(--text-dim); white-space:nowrap; flex-shrink:0; }
+.map-card-del { background:none; border:none; color:#ccc; cursor:pointer; padding:4px; border-radius:4px; display:flex; transition:color 0.15s; }
+.map-card-del:hover { color:#e87; }
+
+.empty-state { text-align:center; color:var(--text-dim); font-size:0.85rem; padding:60px 0; }
+
+/* ── EDITOR VIEW ── */
 #editor-view { display:none; width:100%; height:100%; flex-direction:column; }
 
-.editor-header { height:52px; background:var(--panel); border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; gap:12px; flex-shrink:0; z-index:100; }
-.back-btn { background:none; border:none; color:var(--text-dim); cursor:pointer; padding:6px; border-radius:4px; display:flex; align-items:center; transition:color 0.15s; }
-.back-btn:hover { color:var(--accent); }
-#map-title-input { flex:1; background:none; border:none; color:var(--text); font-family:'Noto Serif SC',serif; font-size:1rem; font-weight:600; outline:none; letter-spacing:0.03em; }
-#map-title-input::placeholder { color:var(--text-dim); }
+.editor-nav {
+  height:48px; background:var(--panel-bg);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 16px; gap:10px;
+  flex-shrink:0; z-index:200;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
 
-.editor-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
-.export-btn { display:flex; align-items:center; gap:6px; background:none; border:1px solid var(--border-light); color:var(--text-mid); padding:5px 12px; border-radius:4px; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:0.72rem; letter-spacing:0.04em; transition:all 0.15s; white-space:nowrap; }
-.export-btn:hover { border-color:var(--accent-dim); color:var(--accent); }
-.save-status { font-family:'JetBrains Mono',monospace; font-size:0.7rem; color:var(--text-dim); letter-spacing:0.05em; min-width:60px; text-align:right; }
-.save-status.saved { color:var(--green); }
+.nav-back {
+  background:none; border:none; color:#999; cursor:pointer;
+  padding:5px 8px; border-radius:6px; display:flex; align-items:center;
+  gap:5px; font-size:0.82rem; font-family:'Noto Sans SC',sans-serif;
+  transition:color 0.15s;
+}
+.nav-back:hover { color:#555; }
 
-.hint-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:6px 16px; font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text-dim); display:flex; gap:20px; flex-wrap:wrap; flex-shrink:0; }
-.hint-bar kbd { background:var(--border); border-radius:3px; padding:1px 5px; color:var(--accent); font-size:0.66rem; }
+#map-title-input {
+  flex:1; background:none; border:none; color:var(--text);
+  font-family:'Noto Sans SC',sans-serif; font-size:0.95rem;
+  font-weight:500; outline:none;
+}
+#map-title-input::placeholder { color:#bbb; }
 
-#canvas-wrap { flex:1; overflow:hidden; position:relative; cursor:grab; user-select:none; }
-#canvas-wrap.grabbing { cursor:grabbing; }
-#canvas { position:absolute; top:0; left:0; transform-origin:0 0; }
-svg#connections { position:absolute; top:0; left:0; width:100000px; height:100000px; pointer-events:none; overflow:visible; }
+.nav-actions { display:flex; gap:6px; align-items:center; }
 
-.node { position:absolute; transform:translate(-50%,-50%); cursor:pointer; transition:filter 0.15s; }
-.node:hover { filter:brightness(1.1); }
-.node-box { min-width:80px; max-width:200px; padding:8px 14px; border-radius:6px; text-align:center; font-size:0.88rem; font-family:'Noto Serif SC',serif; font-weight:600; line-height:1.4; word-break:break-word; white-space:pre-wrap; border:2px solid transparent; transition:border-color 0.2s,box-shadow 0.2s; position:relative; }
-.node.selected .node-box { border-color:var(--accent) !important; box-shadow:0 0 0 3px var(--accent-glow); }
-.node-root > .node-box { min-width:120px; font-size:1rem; padding:12px 20px; border-radius:8px; }
+.nav-btn {
+  display:flex; align-items:center; gap:5px;
+  background:none; border:1px solid var(--border);
+  color:#888; padding:5px 12px; border-radius:16px;
+  cursor:pointer; font-family:'Noto Sans SC',sans-serif;
+  font-size:0.75rem; transition:all 0.15s;
+}
+.nav-btn:hover { border-color:#aaa; color:#555; }
 
-.node-add { position:absolute; right:-14px; top:50%; transform:translateY(-50%); width:20px; height:20px; border-radius:50%; border:1px solid var(--border-light); background:var(--panel); color:var(--text-dim); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:opacity 0.15s,color 0.15s; z-index:10; }
-.node:hover .node-add, .node.selected .node-add { opacity:1; }
-.node-add:hover { color:var(--accent); border-color:var(--accent); }
+.save-dot {
+  width:7px; height:7px; border-radius:50%;
+  background:#ccc; flex-shrink:0; transition:background 0.3s;
+}
+.save-dot.saved { background:#6db56d; }
+.save-dot.unsaved { background:#e8a23a; }
 
-.node-note-dot { position:absolute; top:-5px; right:-5px; width:11px; height:11px; border-radius:50%; background:var(--accent); border:2px solid var(--bg); z-index:5; pointer-events:none; }
+/* ── CANVAS ── */
+#canvas-wrap {
+  flex:1; overflow:hidden; position:relative;
+  cursor:default; user-select:none;
+  background: radial-gradient(circle at 50% 50%, #fafafa 0%, #f0f0eb 100%);
+}
 
-.node-note-tooltip { position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--accent-dim); border-radius:6px; padding:9px 13px; font-size:0.78rem; color:var(--text-mid); max-width:240px; white-space:pre-wrap; word-break:break-word; box-shadow:var(--shadow); pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:50; text-align:left; font-family:'Noto Serif SC',serif; font-weight:400; line-height:1.6; }
-.node:hover .node-note-tooltip { opacity:1; }
+#canvas {
+  position:absolute; top:0; left:0;
+  transform-origin:0 0;
+}
 
-.node-box[contenteditable="true"] { outline:none; cursor:text; border-color:var(--accent) !important; }
+svg#connections {
+  position:absolute; top:0; left:0;
+  width:200000px; height:200000px;
+  pointer-events:none; overflow:visible;
+}
 
-#ctx-menu { position:fixed; background:var(--panel); border:1px solid var(--border-light); border-radius:6px; box-shadow:var(--shadow); min-width:165px; z-index:9999; overflow:hidden; display:none; }
-#ctx-menu.visible { display:block; animation:fadeIn 0.1s ease; }
-@keyframes fadeIn { from{opacity:0;transform:scale(0.96)} to{opacity:1;transform:scale(1)} }
-.ctx-item { padding:10px 16px; font-size:0.85rem; cursor:pointer; color:var(--text-mid); transition:background 0.1s; display:flex; align-items:center; gap:10px; }
-.ctx-item:hover { background:var(--surface); color:var(--text); }
-.ctx-item.danger:hover { color:var(--danger); }
-.ctx-sep { height:1px; background:var(--border); margin:3px 0; }
-.ctx-colors { padding:8px 14px; display:flex; gap:6px; flex-wrap:wrap; }
-.ctx-color-dot { width:18px; height:18px; border-radius:50%; cursor:pointer; border:2px solid transparent; transition:transform 0.15s,border-color 0.15s; }
-.ctx-color-dot:hover { transform:scale(1.25); border-color:white; }
+/* ── NODES ── */
+.node {
+  position:absolute;
+  cursor:pointer;
+  transform:translate(-50%, -50%);
+}
 
-.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); display:none; align-items:center; justify-content:center; z-index:10000; backdrop-filter:blur(3px); }
-.modal-overlay.visible { display:flex; }
-.modal-box { background:var(--panel); border:1px solid var(--border-light); border-radius:10px; padding:32px 28px; width:420px; box-shadow:var(--shadow); animation:fadeIn 0.15s ease; }
-.modal-box h3 { font-size:1.1rem; color:var(--accent); margin-bottom:20px; letter-spacing:0.05em; }
-.modal-input { width:100%; background:var(--surface); border:1px solid var(--border-light); border-radius:5px; padding:10px 14px; color:var(--text); font-family:'Noto Serif SC',serif; font-size:0.93rem; outline:none; transition:border-color 0.2s; margin-bottom:16px; display:block; }
-.modal-input:focus { border-color:var(--accent); }
-textarea.modal-input { resize:vertical; min-height:110px; line-height:1.6; }
-.modal-char { font-family:'JetBrains Mono',monospace; font-size:0.68rem; color:var(--text-dim); text-align:right; margin-top:-10px; margin-bottom:16px; }
-.modal-btns { display:flex; gap:10px; justify-content:flex-end; align-items:center; }
-.modal-btn { padding:9px 22px; border-radius:5px; border:none; cursor:pointer; font-family:'Noto Serif SC',serif; font-size:0.88rem; transition:all 0.15s; }
-.modal-btn-cancel { background:var(--surface); color:var(--text-dim); border:1px solid var(--border); }
-.modal-btn-cancel:hover { color:var(--text); }
-.modal-btn-ok { background:var(--accent); color:#1a1400; font-weight:600; }
-.modal-btn-ok:hover { filter:brightness(1.1); }
-.modal-btn-danger { background:none; border:1px solid var(--danger); color:var(--danger); margin-right:auto; }
-.modal-btn-danger:hover { background:rgba(200,110,110,0.1); }
+/* Root node: Coggle-style arrow label */
+.node-root-box {
+  display:flex; align-items:center;
+  background:#616161; color:#fff;
+  font-size:1rem; font-weight:500;
+  padding:8px 18px 8px 16px;
+  border-radius:4px;
+  position:relative;
+  white-space:nowrap;
+  min-width:80px;
+  cursor:text;
+}
+/* Arrow tip on right */
+.node-root-box::after {
+  content:'';
+  position:absolute; right:-10px; top:50%;
+  transform:translateY(-50%);
+  border:10px solid transparent;
+  border-left:10px solid #616161;
+  border-right:none;
+}
+.node-root-box.editing { outline:none; }
 
-#export-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:10000; backdrop-filter:blur(4px); }
-#export-overlay.visible { display:flex; }
-.export-msg { color:var(--text); font-family:'JetBrains Mono',monospace; font-size:0.9rem; letter-spacing:0.08em; }
+/* Branch/leaf nodes: just text, colored */
+.node-label {
+  font-size:0.92rem; font-weight:400;
+  padding:3px 0;
+  white-space:nowrap;
+  cursor:text;
+  position:relative;
+  line-height:1.4;
+}
 
-::-webkit-scrollbar { width:6px; }
+/* Hover add button: little circle on the end of the line */
+.node-add-btn {
+  position:absolute;
+  width:18px; height:18px;
+  border-radius:50%;
+  border:2px solid currentColor;
+  background:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:bold; line-height:1;
+  cursor:pointer;
+  opacity:0;
+  transition:opacity 0.15s;
+  pointer-events:all;
+  right:-24px; top:50%; transform:translateY(-50%);
+}
+.node:hover .node-add-btn { opacity:1; }
+
+/* Note dot */
+.note-dot {
+  position:absolute; top:-4px; right:-4px;
+  width:8px; height:8px; border-radius:50%;
+  background:#e8a23a; border:1.5px solid #fff;
+  pointer-events:none;
+}
+
+/* Note tooltip */
+.note-tip {
+  position:absolute; bottom:calc(100% + 8px); left:50%;
+  transform:translateX(-50%);
+  background:#fff; border:1px solid #e0e0e0;
+  border-radius:8px; padding:8px 12px;
+  font-size:0.78rem; color:#666; max-width:220px;
+  white-space:pre-wrap; word-break:break-word;
+  box-shadow:0 4px 16px rgba(0,0,0,0.1);
+  pointer-events:none; opacity:0;
+  transition:opacity 0.15s; z-index:100;
+  text-align:left;
+}
+.node:hover .note-tip { opacity:1; }
+
+/* ── CONTEXT MENU ── */
+#ctx-menu {
+  position:fixed; background:#fff;
+  border:1px solid #e8e8e8; border-radius:10px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.12);
+  min-width:160px; z-index:9999;
+  display:none; overflow:hidden;
+}
+#ctx-menu.on { display:block; animation:popIn 0.1s ease; }
+@keyframes popIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+
+.ctx-item {
+  padding:10px 16px; font-size:0.85rem;
+  cursor:pointer; color:#555;
+  display:flex; align-items:center; gap:10px;
+  transition:background 0.1s;
+}
+.ctx-item:hover { background:#f7f7f7; color:#333; }
+.ctx-item.red:hover { color:#e87; }
+.ctx-sep { height:1px; background:#f0f0f0; margin:3px 0; }
+
+/* ── MODALS ── */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.35);
+  display:none; align-items:center; justify-content:center;
+  z-index:10000; backdrop-filter:blur(2px);
+}
+.overlay.on { display:flex; }
+
+.modal {
+  background:#fff; border-radius:14px;
+  padding:28px 26px; width:400px;
+  box-shadow:0 8px 40px rgba(0,0,0,0.15);
+  animation:popIn 0.15s ease;
+}
+.modal h3 { font-size:1rem; font-weight:500; color:#333; margin-bottom:18px; }
+
+.modal-input {
+  width:100%; border:1px solid #ddd; border-radius:8px;
+  padding:10px 13px; font-family:'Noto Sans SC',sans-serif;
+  font-size:0.9rem; color:#333; outline:none;
+  transition:border-color 0.2s; margin-bottom:14px; display:block;
+}
+.modal-input:focus { border-color:#aaa; }
+textarea.modal-input { resize:vertical; min-height:100px; line-height:1.6; }
+.modal-char { font-size:0.7rem; color:#bbb; text-align:right; margin-top:-8px; margin-bottom:14px; }
+
+.modal-btns { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+.mbtn {
+  padding:8px 20px; border-radius:20px; border:none;
+  cursor:pointer; font-family:'Noto Sans SC',sans-serif;
+  font-size:0.85rem; transition:all 0.15s;
+}
+.mbtn-cancel { background:#f5f5f5; color:#888; }
+.mbtn-cancel:hover { background:#eee; }
+.mbtn-ok { background:var(--c0); color:#fff; font-weight:500; box-shadow:0 2px 8px rgba(232,115,90,0.3); }
+.mbtn-ok:hover { filter:brightness(1.08); }
+.mbtn-del { background:none; border:1px solid #f5c0b0; color:#e87; margin-right:auto; }
+.mbtn-del:hover { background:#fff5f3; }
+
+/* Export overlay */
+#exp-overlay {
+  position:fixed; inset:0; background:rgba(255,255,255,0.8);
+  display:none; align-items:center; justify-content:center;
+  z-index:10000;
+}
+#exp-overlay.on { display:flex; }
+.exp-msg { color:#888; font-size:0.9rem; }
+
+::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb { background:#ddd; border-radius:3px; }
 </style>
 </head>
 <body>
 
 <!-- LIST VIEW -->
 <div id="list-view">
-  <div class="list-header">
-    <h1>MindTree</h1>
-    <p>// 你的私人思维导图</p>
+  <div class="list-top">
+    <div class="list-logo">Mind<span>Tree</span></div>
+    <button class="new-btn" onclick="showNewModal()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+      新建导图
+    </button>
   </div>
-  <button class="new-map-btn" onclick="showNewMapModal()">
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-    新建导图
-  </button>
   <div class="maps-grid" id="maps-grid">
-    <div class="empty-state">暂无导图，点击上方按钮创建第一张</div>
+    <div class="empty-state">还没有导图，点击右上角新建一张</div>
   </div>
 </div>
 
 <!-- EDITOR VIEW -->
 <div id="editor-view">
-  <div class="editor-header">
-    <button class="back-btn" onclick="backToList()">
-      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M11 4L6 9l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="editor-nav">
+    <button class="nav-back" onclick="backToList()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      全部导图
     </button>
     <input id="map-title-input" type="text" placeholder="导图标题..." oninput="onTitleChange()">
-    <div class="editor-actions">
-      <button class="export-btn" onclick="exportPNG()">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3.5 6.5L6 9l3.5-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        PNG
-      </button>
-      <button class="export-btn" onclick="exportPDF()">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 1h6l3 3v8H2V1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 1v3h3" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-        PDF
-      </button>
-      <span class="save-status" id="save-status">已保存</span>
+    <div class="nav-actions">
+      <button class="nav-btn" onclick="exportPNG()">导出 PNG</button>
+      <button class="nav-btn" onclick="exportPDF()">导出 PDF</button>
+      <div class="save-dot saved" id="save-dot" title="已保存"></div>
     </div>
-  </div>
-  <div class="hint-bar">
-    <span><kbd>双击</kbd> 编辑文字</span>
-    <span><kbd>右键</kbd> 备注 / 颜色 / 删除</span>
-    <span><kbd>Tab</kbd> 加子节点</span>
-    <span><kbd>N</kbd> 快速备注</span>
-    <span><kbd>Del</kbd> 删除节点</span>
-    <span><kbd>滚轮</kbd> 缩放</span>
-    <span><kbd>拖拽空白</kbd> 移动画布</span>
   </div>
   <div id="canvas-wrap">
     <div id="canvas">
@@ -175,403 +332,547 @@ textarea.modal-input { resize:vertical; min-height:110px; line-height:1.6; }
   </div>
 </div>
 
-<!-- Context Menu -->
-<div id="ctx-menu">
-  <div class="ctx-item" onclick="ctxAddChild()">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-    添加子节点
-  </div>
-  <div class="ctx-item" onclick="ctxEditNode()">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10L10 2l2 2-8 8H2v-2z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-    编辑文字
-  </div>
-  <div class="ctx-item" onclick="ctxEditNote()">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M4 5h6M4 7.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-    编辑备注
-  </div>
-  <div class="ctx-sep"></div>
-  <div style="padding:4px 14px 2px;font-size:0.7rem;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:0.04em;">节点颜色</div>
-  <div class="ctx-colors" id="ctx-colors"></div>
-  <div class="ctx-sep"></div>
-  <div class="ctx-item danger" onclick="ctxDeleteNode()">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V3h4v1M6 6v5M8 6v5M3 4l1 8h6l1-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    删除节点
-  </div>
-</div>
-
 <!-- New Map Modal -->
-<div class="modal-overlay" id="modal-newmap">
-  <div class="modal-box">
+<div class="overlay" id="overlay-new">
+  <div class="modal">
     <h3>新建思维导图</h3>
-    <input id="modal-input" class="modal-input" type="text" placeholder="给这张导图起个名字..." maxlength="40">
+    <input id="new-title-input" class="modal-input" type="text" placeholder="给这张导图起个名字..." maxlength="40">
     <div class="modal-btns">
-      <button class="modal-btn modal-btn-cancel" onclick="hideNewMapModal()">取消</button>
-      <button class="modal-btn modal-btn-ok" onclick="confirmNewMap()">创建</button>
+      <button class="mbtn mbtn-cancel" onclick="hideNewModal()">取消</button>
+      <button class="mbtn mbtn-ok" onclick="confirmNew()">创建</button>
     </div>
   </div>
 </div>
 
 <!-- Note Modal -->
-<div class="modal-overlay" id="modal-note">
-  <div class="modal-box">
+<div class="overlay" id="overlay-note">
+  <div class="modal">
     <h3>节点备注</h3>
-    <textarea id="note-input" class="modal-input" placeholder="输入备注内容..." maxlength="500" rows="5" oninput="updateNoteCount()"></textarea>
+    <textarea id="note-input" class="modal-input" placeholder="输入备注内容..." maxlength="500" rows="5" oninput="updateNoteChar()"></textarea>
     <div class="modal-char" id="note-char">0 / 500</div>
     <div class="modal-btns">
-      <button class="modal-btn modal-btn-danger" onclick="clearNote()">清除备注</button>
-      <button class="modal-btn modal-btn-cancel" onclick="hideNoteModal()">取消</button>
-      <button class="modal-btn modal-btn-ok" onclick="saveNote()">保存</button>
+      <button class="mbtn mbtn-del" onclick="clearNote()">清除备注</button>
+      <button class="mbtn mbtn-cancel" onclick="hideNoteModal()">取消</button>
+      <button class="mbtn mbtn-ok" onclick="saveNote()">保存</button>
     </div>
   </div>
 </div>
 
-<!-- Export Overlay -->
-<div id="export-overlay">
-  <div class="export-msg" id="export-msg">正在生成...</div>
+<!-- Context Menu -->
+<div id="ctx-menu">
+  <div class="ctx-item" onclick="ctxAdd()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    添加子节点
+  </div>
+  <div class="ctx-item" onclick="ctxEdit()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 9.5L9 2.5l1.5 1.5-7 7H2V9.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+    编辑文字
+  </div>
+  <div class="ctx-item" onclick="ctxNote()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M3.5 4.5h6M3.5 6.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    编辑备注
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item red" onclick="ctxDel()">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 5.5v4M8 5.5v4M2.5 3.5l.8 7h6.4l.8-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    删除节点
+  </div>
+</div>
+
+<!-- Export overlay -->
+<div id="exp-overlay">
+  <div class="exp-msg" id="exp-msg">正在生成...</div>
 </div>
 
 <script>
-const COLORS = ['#c8a96e','#6eb5c8','#a96ec8','#6ec87a','#c86e6e','#c8b96e','#c8846e','#6e8dc8'];
+// ── PALETTE ── (Coggle-style warm branch colors)
+const PALETTE = ['#e8735a','#e8a23a','#6db56d','#5a9fd4','#a06db5','#d45a9f','#5ab5b5','#b5a05a'];
 
-let currentMapId=null, mapData=null, selectedNodeId=null, ctxNodeId=null, noteNodeId=null;
-let saveTimer=null, isDirty=false, nodeEls={};
-let canvasX=0, canvasY=0, canvasScale=1;
-let isPanning=false, panStartX=0, panStartY=0, panStartCX=0, panStartCY=0;
-let isDraggingNode=false, dragNodeId=null, dragStartX=0, dragStartY=0, dragNodeStartX=0, dragNodeStartY=0;
+// ── STATE ──
+let currentMapId = null, mapData = null;
+let selectedId = null, ctxId = null, noteId = null;
+let saveTimer = null, isDirty = false;
+let nodeEls = {}, nodeData = {}; // id -> element, id -> data object
 
-function uid(){ return 'n'+Math.random().toString(36).slice(2,9); }
-function fmtTime(ts){ const d=new Date(ts*1000); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`; }
-function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Canvas transform
+let cx = 0, cy = 0, cz = 1;
+let panning = false, px0 = 0, py0 = 0, pcx = 0, pcy = 0;
+// Node drag
+let dragging = false, dragId = null, dx0 = 0, dy0 = 0, dnx = 0, dny = 0;
 
-async function apiGet(p){ return (await fetch(p)).json(); }
-async function apiPost(p,b){ return (await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})).json(); }
-async function apiPut(p,b){ return (await fetch(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})).json(); }
-async function apiDelete(p){ return (await fetch(p,{method:'DELETE'})).json(); }
+// ── UTILS ──
+function uid() { return 'n' + Math.random().toString(36).slice(2, 9); }
+function fmtDate(ts) {
+  const d = new Date(ts * 1000);
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function branchColor(branchIndex) { return PALETTE[branchIndex % PALETTE.length]; }
 
-// LIST
-async function loadList(){
-  const maps=await apiGet('/api/maps');
-  const grid=document.getElementById('maps-grid');
-  if(!maps.length){ grid.innerHTML='<div class="empty-state">暂无导图，点击上方按钮创建第一张</div>'; return; }
-  grid.innerHTML=maps.map(m=>`
+// ── API ──
+const api = {
+  get: p => fetch(p).then(r => r.json()),
+  post: (p,b) => fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
+  put: (p,b) => fetch(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
+  del: p => fetch(p,{method:'DELETE'}).then(r=>r.json()),
+};
+
+// ── LIST ──
+async function loadList() {
+  const maps = await api.get('/api/maps');
+  const grid = document.getElementById('maps-grid');
+  if (!maps.length) {
+    grid.innerHTML = '<div class="empty-state">还没有导图，点击右上角新建一张</div>';
+    return;
+  }
+  grid.innerHTML = maps.map((m, i) => `
     <div class="map-card" onclick="openMap(${m.id})">
-      <div class="map-card-title">${escHtml(m.title)}</div>
-      <div class="map-card-meta">${fmtTime(m.updated_at)}</div>
-      <button class="map-card-delete" onclick="event.stopPropagation();deleteMap(${m.id},this.closest('.map-card'))">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5 4V3h4v1M6 6v5M8 6v5M3 4l1 8h6l1-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="map-card-dot" style="background:${PALETTE[i % PALETTE.length]}"></div>
+      <div class="map-card-title">${esc(m.title)}</div>
+      <div class="map-card-meta">${fmtDate(m.updated_at)}</div>
+      <button class="map-card-del" onclick="event.stopPropagation();delMap(${m.id},this.closest('.map-card'))">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 5.5v4M8 5.5v4M2.5 3.5l.8 7h6.4l.8-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>`).join('');
 }
 
-async function deleteMap(id,card){
-  if(!confirm('确定删除这张导图？')) return;
-  await apiDelete(`/api/maps/${id}`); card.remove();
-  if(!document.querySelector('.map-card')) document.getElementById('maps-grid').innerHTML='<div class="empty-state">暂无导图，点击上方按钮创建第一张</div>';
+async function delMap(id, card) {
+  if (!confirm('确定删除这张导图？')) return;
+  await api.del(`/api/maps/${id}`);
+  card.remove();
+  if (!document.querySelector('.map-card'))
+    document.getElementById('maps-grid').innerHTML = '<div class="empty-state">还没有导图，点击右上角新建一张</div>';
 }
 
-// NEW MAP MODAL
-function showNewMapModal(){ document.getElementById('modal-input').value=''; document.getElementById('modal-newmap').classList.add('visible'); setTimeout(()=>document.getElementById('modal-input').focus(),50); }
-function hideNewMapModal(){ document.getElementById('modal-newmap').classList.remove('visible'); }
-async function confirmNewMap(){
-  const title=document.getElementById('modal-input').value.trim()||'未命名导图';
-  hideNewMapModal();
-  const m=await apiPost('/api/maps',{title}); openMap(m.id);
+// ── NEW MAP MODAL ──
+function showNewModal() {
+  document.getElementById('new-title-input').value = '';
+  document.getElementById('overlay-new').classList.add('on');
+  setTimeout(() => document.getElementById('new-title-input').focus(), 60);
 }
-document.getElementById('modal-input').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmNewMap(); if(e.key==='Escape') hideNewMapModal(); });
-document.getElementById('modal-newmap').addEventListener('click',e=>{ if(e.target===document.getElementById('modal-newmap')) hideNewMapModal(); });
+function hideNewModal() { document.getElementById('overlay-new').classList.remove('on'); }
+async function confirmNew() {
+  const t = document.getElementById('new-title-input').value.trim() || '未命名导图';
+  hideNewModal();
+  const m = await api.post('/api/maps', { title: t });
+  openMap(m.id);
+}
+document.getElementById('new-title-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmNew();
+  if (e.key === 'Escape') hideNewModal();
+});
+document.getElementById('overlay-new').addEventListener('click', e => {
+  if (e.target === document.getElementById('overlay-new')) hideNewModal();
+});
 
-// NOTE MODAL
-function showNoteModal(nodeId){
-  noteNodeId=nodeId;
-  const node=findNode(mapData,nodeId);
-  document.getElementById('note-input').value=node.note||'';
-  updateNoteCount();
-  document.getElementById('modal-note').classList.add('visible');
-  setTimeout(()=>document.getElementById('note-input').focus(),50);
-}
-function hideNoteModal(){ document.getElementById('modal-note').classList.remove('visible'); noteNodeId=null; }
-function updateNoteCount(){ const v=document.getElementById('note-input').value; document.getElementById('note-char').textContent=`${v.length} / 500`; }
-function saveNote(){
-  if(!noteNodeId) return;
-  findNode(mapData,noteNodeId).note=document.getElementById('note-input').value.trim();
-  hideNoteModal(); markDirty(); renderAll(); selectNode(noteNodeId);
-}
-function clearNote(){
-  if(!noteNodeId) return;
-  findNode(mapData,noteNodeId).note='';
-  hideNoteModal(); markDirty(); renderAll();
-}
-document.getElementById('modal-note').addEventListener('click',e=>{ if(e.target===document.getElementById('modal-note')) hideNoteModal(); });
-document.getElementById('note-input').addEventListener('keydown',e=>{ if(e.key==='Escape') hideNoteModal(); });
+// ── OPEN MAP ──
+async function openMap(id) {
+  currentMapId = id;
+  const m = await api.get(`/api/maps/${id}`);
+  mapData = typeof m.data === 'string' ? JSON.parse(m.data) : m.data;
+  if (!mapData || !mapData.id) {
+    mapData = { id: uid(), text: m.title, x: 0, y: 0, children: [], note: '' };
+  }
+  document.getElementById('map-title-input').value = m.title;
+  document.getElementById('list-view').style.display = 'none';
+  document.getElementById('editor-view').style.display = 'flex';
+  setSaved(true);
 
-// OPEN / BACK
-async function openMap(id){
-  currentMapId=id;
-  const m=await apiGet(`/api/maps/${id}`);
-  mapData=typeof m.data==='string'?JSON.parse(m.data):m.data;
-  if(!mapData||!mapData.id) mapData={id:uid(),text:m.title,x:0,y:0,color:COLORS[0],children:[],note:''};
-  document.getElementById('map-title-input').value=m.title;
-  document.getElementById('list-view').style.display='none';
-  document.getElementById('editor-view').style.display='flex';
-  setSaveStatus('已保存');
-  const wrap=document.getElementById('canvas-wrap');
-  canvasScale=1; canvasX=wrap.clientWidth/2; canvasY=wrap.clientHeight/2;
-  applyCanvasTransform(); renderAll();
+  // Center
+  const wrap = document.getElementById('canvas-wrap');
+  cz = 1; cx = wrap.clientWidth / 2; cy = wrap.clientHeight / 2;
+  applyTransform();
+  renderAll();
 }
 
-function backToList(){
-  if(isDirty) saveNow();
-  document.getElementById('editor-view').style.display='none';
-  document.getElementById('list-view').style.display='flex';
-  currentMapId=null; mapData=null; selectedNodeId=null; nodeEls={}; isDirty=false;
+function backToList() {
+  if (isDirty) saveNow();
+  document.getElementById('editor-view').style.display = 'none';
+  document.getElementById('list-view').style.display = 'flex';
+  currentMapId = null; mapData = null; selectedId = null; nodeEls = {}; nodeData = {}; isDirty = false;
   loadList();
 }
 
-function onTitleChange(){ markDirty(); }
+function onTitleChange() { markDirty(); }
 
-// RENDER
-function renderAll(){
-  const canvas=document.getElementById('canvas');
-  canvas.querySelectorAll('.node').forEach(e=>e.remove());
-  nodeEls={}; document.getElementById('connections').innerHTML='';
-  if(!mapData) return;
-  renderNode(mapData,null,0); drawConnections(mapData,0);
+// ── RENDER ──
+// Assign branch colors: each direct child of root gets a color
+function assignColors(node, color, depth) {
+  node._color = color;
+  node._depth = depth;
+  if (node.children) {
+    node.children.forEach((c, i) => {
+      const col = depth === 0 ? PALETTE[i % PALETTE.length] : color;
+      assignColors(c, col, depth + 1);
+    });
+  }
 }
 
-function getNodeColor(node,depth){ return node.color||COLORS[depth%COLORS.length]; }
+function renderAll() {
+  const canvas = document.getElementById('canvas');
+  canvas.querySelectorAll('.node').forEach(e => e.remove());
+  nodeEls = {}; nodeData = {};
+  document.getElementById('connections').innerHTML = '';
+  if (!mapData) return;
+  assignColors(mapData, PALETTE[0], 0);
+  flattenTree(mapData, nodeData);
+  renderNode(mapData);
+  drawAllLines(mapData);
+}
 
-function renderNode(node,parent,depth){
-  const el=document.createElement('div');
-  el.className='node'+(depth===0?' node-root':'');
-  el.dataset.id=node.id;
-  el.style.left=(node.x||0)+'px';
-  el.style.top=(node.y||0)+'px';
+function flattenTree(node, map) {
+  map[node.id] = node;
+  if (node.children) node.children.forEach(c => flattenTree(c, map));
+}
 
-  const color=getNodeColor(node,depth);
-  const box=document.createElement('div');
-  box.className='node-box';
-  box.style.background=hexDarken(color,0.15);
-  box.style.color='#fff';
-  box.style.borderColor=color;
-  box.style.boxShadow=`0 2px 12px ${color}30`;
-  box.textContent=node.text||'节点';
-  el.appendChild(box);
+function renderNode(node) {
+  const el = document.createElement('div');
+  el.className = 'node';
+  el.dataset.id = node.id;
+  el.style.left = (node.x || 0) + 'px';
+  el.style.top = (node.y || 0) + 'px';
 
-  if(node.note){
-    const dot=document.createElement('div'); dot.className='node-note-dot'; el.appendChild(dot);
-    const tip=document.createElement('div'); tip.className='node-note-tooltip'; tip.textContent=node.note; el.appendChild(tip);
+  const color = node._color || PALETTE[0];
+  const isRoot = node._depth === 0;
+
+  if (isRoot) {
+    // Coggle-style arrow label
+    const box = document.createElement('div');
+    box.className = 'node-root-box';
+    box.textContent = node.text || '主题';
+    el.appendChild(box);
+  } else {
+    // Plain colored text
+    const lbl = document.createElement('div');
+    lbl.className = 'node-label';
+    lbl.style.color = color;
+    lbl.style.borderBottom = `2px solid ${color}`;
+    lbl.style.paddingBottom = '1px';
+    lbl.textContent = node.text || '节点';
+    el.appendChild(lbl);
   }
 
-  const addBtn=document.createElement('div'); addBtn.className='node-add'; addBtn.textContent='+';
-  addBtn.addEventListener('click',e=>{e.stopPropagation();addChild(node.id);}); el.appendChild(addBtn);
+  // Note dot & tooltip
+  if (node.note) {
+    const dot = document.createElement('div'); dot.className = 'note-dot'; el.appendChild(dot);
+    const tip = document.createElement('div'); tip.className = 'note-tip'; tip.textContent = node.note; el.appendChild(tip);
+  }
 
-  el.addEventListener('mousedown',e=>onNodeMouseDown(e,node.id));
-  el.addEventListener('click',e=>{e.stopPropagation();selectNode(node.id);});
-  el.addEventListener('dblclick',e=>{e.stopPropagation();startEdit(node.id);});
-  el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showCtxMenu(e,node.id);});
+  // Add child button
+  if (!isRoot) {
+    const addBtn = document.createElement('div');
+    addBtn.className = 'node-add-btn';
+    addBtn.style.color = color;
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', e => { e.stopPropagation(); addChild(node.id); });
+    el.appendChild(addBtn);
+  }
+
+  // Events
+  el.addEventListener('mousedown', e => onNodeMD(e, node.id));
+  el.addEventListener('click', e => { e.stopPropagation(); selectNode(node.id); });
+  el.addEventListener('dblclick', e => { e.stopPropagation(); startEdit(node.id); });
+  el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showCtx(e, node.id); });
 
   document.getElementById('canvas').appendChild(el);
-  nodeEls[node.id]=el;
-  if(node.children) node.children.forEach(c=>renderNode(c,node,depth+1));
+  nodeEls[node.id] = el;
+
+  if (node.children) node.children.forEach(c => renderNode(c));
 }
 
-function drawConnections(node,depth){
-  if(!node.children) return;
-  node.children.forEach(c=>{drawLine(node,c,depth);drawConnections(c,depth+1);});
+// ── CONNECTIONS ── Coggle uses smooth curved lines from parent center to child
+function drawAllLines(node) {
+  if (!node.children) return;
+  node.children.forEach(c => {
+    drawLine(node, c);
+    drawAllLines(c);
+  });
 }
 
-function drawLine(parent,child,depth){
-  const pEl=nodeEls[parent.id],cEl=nodeEls[child.id];
-  if(!pEl||!cEl) return;
-  const px=parent.x+pEl.offsetWidth/2,py=parent.y;
-  const cx=child.x+cEl.offsetWidth/2,cy=child.y;
-  const color=getNodeColor(child,depth+1);
-  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-  const mx=(px+cx)/2;
-  path.setAttribute('d',`M ${px} ${py} C ${mx} ${py} ${mx} ${cy} ${cx} ${cy}`);
-  path.setAttribute('stroke',color); path.setAttribute('stroke-width','2');
-  path.setAttribute('fill','none'); path.setAttribute('opacity','0.6');
-  document.getElementById('connections').appendChild(path);
+function drawLine(parent, child) {
+  const svg = document.getElementById('connections');
+  const pEl = nodeEls[parent.id], cEl = nodeEls[child.id];
+  if (!pEl || !cEl) return;
+
+  const color = child._color || PALETTE[0];
+  const pw = pEl.offsetWidth, ph = pEl.offsetHeight;
+  const cw = cEl.offsetWidth, ch = cEl.offsetHeight;
+
+  // From right-center of parent to left-center of child (or adjust based on position)
+  const px1 = parent.x + pw / 2, py1 = parent.y;
+  const cx1 = child.x + cw / 2, cy1 = child.y;
+
+  // Coggle-style: thick curved line, tapering
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  const mx = (px1 + cx1) / 2;
+
+  // Control points for S-curve like Coggle
+  const d = `M ${px1} ${py1} C ${mx} ${py1}, ${mx} ${cy1}, ${cx1} ${cy1}`;
+  path.setAttribute('d', d);
+  path.setAttribute('stroke', color);
+
+  // Thicker near root, thinner for deep nodes
+  const depth = child._depth || 1;
+  const sw = Math.max(1.5, 4 - depth * 0.8);
+  path.setAttribute('stroke-width', sw);
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke-linecap', 'round');
+  path.setAttribute('opacity', '0.85');
+  svg.appendChild(path);
 }
 
-// SELECTION
-function selectNode(id){
-  document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
-  selectedNodeId=id; if(id&&nodeEls[id]) nodeEls[id].classList.add('selected');
+// ── SELECTION ──
+function selectNode(id) {
+  document.querySelectorAll('.node').forEach(n => n.style.outline = 'none');
+  selectedId = id;
+  if (id && nodeEls[id]) {
+    nodeEls[id].style.outline = '2px dashed ' + (nodeData[id]?._color || '#aaa');
+    nodeEls[id].style.outlineOffset = '3px';
+    nodeEls[id].style.borderRadius = '4px';
+  }
 }
 
-// EDIT
-function startEdit(id){
-  const node=findNode(mapData,id); if(!node) return;
-  const box=nodeEls[id].querySelector('.node-box');
-  box.contentEditable='true'; box.focus();
-  const r=document.createRange(); r.selectNodeContents(box);
+// ── EDIT ──
+function startEdit(id) {
+  const node = nodeData[id]; if (!node) return;
+  const el = nodeEls[id];
+  const lbl = el.querySelector('.node-root-box, .node-label');
+  lbl.contentEditable = 'true'; lbl.focus();
+  const r = document.createRange(); r.selectNodeContents(lbl);
   window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
-  const finish=()=>{
-    box.contentEditable='false'; node.text=box.textContent.trim()||'节点'; box.textContent=node.text;
-    markDirty(); box.removeEventListener('blur',finish); box.removeEventListener('keydown',onKey);
+  const finish = () => {
+    lbl.contentEditable = 'false';
+    node.text = lbl.textContent.trim() || '节点';
+    lbl.textContent = node.text;
+    markDirty();
+    lbl.removeEventListener('blur', finish); lbl.removeEventListener('keydown', onKey);
   };
-  const onKey=e=>{
-    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();box.blur();}
-    if(e.key==='Escape'){box.textContent=node.text;box.blur();}
+  const onKey = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); lbl.blur(); }
+    if (e.key === 'Escape') { lbl.textContent = node.text; lbl.blur(); }
   };
-  box.addEventListener('blur',finish); box.addEventListener('keydown',onKey);
+  lbl.addEventListener('blur', finish); lbl.addEventListener('keydown', onKey);
 }
 
-// ADD CHILD
-function addChild(parentId){
-  const parent=findNode(mapData,parentId); if(!parent) return;
-  const depth=getDepth(mapData,parentId);
-  const siblings=parent.children?parent.children.length:0;
-  const child={id:uid(),text:'新节点',x:parent.x+(siblings*180)-siblings*60,y:parent.y+130,color:COLORS[(depth+1)%COLORS.length],children:[],note:''};
-  if(!parent.children) parent.children=[];
-  parent.children.push(child); markDirty(); renderAll(); selectNode(child.id);
-  setTimeout(()=>startEdit(child.id),50);
-}
+// ── ADD CHILD ──
+function addChild(parentId) {
+  const parent = nodeData[parentId]; if (!parent) return;
+  const siblings = parent.children ? parent.children.length : 0;
+  const depth = (parent._depth || 0) + 1;
 
-// DELETE
-function deleteNodeById(id){
-  if(id===mapData.id){alert('根节点不能删除');return;}
-  deleteFromTree(mapData,id); if(selectedNodeId===id) selectedNodeId=null;
-  markDirty(); renderAll();
-}
-function deleteFromTree(node,id){
-  if(!node.children) return false;
-  const idx=node.children.findIndex(c=>c.id===id);
-  if(idx!==-1){node.children.splice(idx,1);return true;}
-  return node.children.some(c=>deleteFromTree(c,id));
-}
-
-// CTX MENU
-function showCtxMenu(e,nodeId){
-  ctxNodeId=nodeId; selectNode(nodeId);
-  document.getElementById('ctx-colors').innerHTML=COLORS.map(c=>`<div class="ctx-color-dot" style="background:${c}" onclick="setNodeColor('${c}')"></div>`).join('');
-  const menu=document.getElementById('ctx-menu');
-  // Keep menu inside viewport
-  const mw=170,mh=240;
-  let lx=e.clientX,ly=e.clientY;
-  if(lx+mw>window.innerWidth) lx=window.innerWidth-mw-8;
-  if(ly+mh>window.innerHeight) ly=window.innerHeight-mh-8;
-  menu.style.left=lx+'px'; menu.style.top=ly+'px';
-  menu.classList.add('visible');
-}
-function hideCtxMenu(){ document.getElementById('ctx-menu').classList.remove('visible'); ctxNodeId=null; }
-function ctxAddChild(){ const id=ctxNodeId; hideCtxMenu(); if(id) addChild(id); }
-function ctxEditNode(){ const id=ctxNodeId; hideCtxMenu(); if(id) startEdit(id); }
-function ctxEditNote(){ const id=ctxNodeId; hideCtxMenu(); if(id) showNoteModal(id); }
-function ctxDeleteNode(){ const id=ctxNodeId; hideCtxMenu(); if(id) deleteNodeById(id); }
-function setNodeColor(color){ const id=ctxNodeId; hideCtxMenu(); const node=findNode(mapData,id); if(node){node.color=color;markDirty();renderAll();selectNode(id);} }
-
-// NODE DRAG
-function onNodeMouseDown(e,nodeId){
-  if(e.button!==0||e.target.closest('[contenteditable="true"]')||e.target.classList.contains('node-add')) return;
-  isDraggingNode=false; dragNodeId=nodeId; dragStartX=e.clientX; dragStartY=e.clientY;
-  const node=findNode(mapData,nodeId); dragNodeStartX=node.x; dragNodeStartY=node.y;
-  const onMove=e2=>{
-    const dx=(e2.clientX-dragStartX)/canvasScale,dy=(e2.clientY-dragStartY)/canvasScale;
-    if(Math.abs(dx)>3||Math.abs(dy)>3) isDraggingNode=true;
-    if(isDraggingNode){
-      const n=findNode(mapData,dragNodeId); n.x=dragNodeStartX+dx; n.y=dragNodeStartY+dy;
-      const el=nodeEls[dragNodeId]; el.style.left=n.x+'px'; el.style.top=n.y+'px';
-      document.getElementById('connections').innerHTML=''; drawConnections(mapData,0);
-    }
+  // Position: fan out to the right and below
+  const child = {
+    id: uid(), text: '新节点',
+    x: parent.x + 200,
+    y: parent.y + (siblings * 50) - (siblings > 0 ? (siblings - 1) * 25 : 0),
+    children: [], note: '',
   };
-  const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); if(isDraggingNode){markDirty();isDraggingNode=false;} dragNodeId=null; };
-  document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp); e.stopPropagation();
+  if (!parent.children) parent.children = [];
+  parent.children.push(child);
+  markDirty(); renderAll(); selectNode(child.id);
+  setTimeout(() => startEdit(child.id), 40);
 }
 
-// CANVAS PAN/ZOOM
-const canvasWrap=document.getElementById('canvas-wrap');
-canvasWrap.addEventListener('mousedown',e=>{ if(e.button!==0||e.target.closest('.node')) return; isPanning=true; panStartX=e.clientX;panStartY=e.clientY;panStartCX=canvasX;panStartCY=canvasY; canvasWrap.classList.add('grabbing'); });
-document.addEventListener('mousemove',e=>{ if(!isPanning) return; canvasX=panStartCX+(e.clientX-panStartX); canvasY=panStartCY+(e.clientY-panStartY); applyCanvasTransform(); });
-document.addEventListener('mouseup',()=>{ if(isPanning){isPanning=false;canvasWrap.classList.remove('grabbing');} });
-canvasWrap.addEventListener('wheel',e=>{
-  e.preventDefault();
-  const delta=e.deltaY>0?0.9:1.1, ns=Math.min(3,Math.max(0.2,canvasScale*delta));
-  const rect=canvasWrap.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top;
-  canvasX=mx-(mx-canvasX)*(ns/canvasScale); canvasY=my-(my-canvasY)*(ns/canvasScale); canvasScale=ns; applyCanvasTransform();
-},{passive:false});
-function applyCanvasTransform(){ document.getElementById('canvas').style.transform=`translate(${canvasX}px,${canvasY}px) scale(${canvasScale})`; }
-
-document.addEventListener('click',e=>{ if(!e.target.closest('#ctx-menu')) hideCtxMenu(); if(!e.target.closest('.node')&&!e.target.closest('#ctx-menu')) selectNode(null); });
-document.addEventListener('contextmenu',e=>{ if(!e.target.closest('.node')){hideCtxMenu();e.preventDefault();} });
-
-// EXPORT
-function showExportMsg(msg){ document.getElementById('export-msg').textContent=msg; document.getElementById('export-overlay').classList.add('visible'); }
-function hideExportMsg(){ document.getElementById('export-overlay').classList.remove('visible'); }
-
-async function captureCanvas(){
-  const canvas=document.getElementById('canvas');
-  const orig=canvas.style.transform;
-  canvas.style.transform='translate(0px,0px) scale(1)';
-  await new Promise(r=>setTimeout(r,100));
-  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-  document.querySelectorAll('.node').forEach(el=>{
-    const x=parseFloat(el.style.left),y=parseFloat(el.style.top),w=el.offsetWidth,h=el.offsetHeight;
-    minX=Math.min(minX,x-w/2-10); minY=Math.min(minY,y-h/2-10);
-    maxX=Math.max(maxX,x+w/2+10); maxY=Math.max(maxY,y+h/2+10);
-  });
-  const pad=50; minX-=pad; minY-=pad; maxX+=pad; maxY+=pad;
-  const img=await html2canvas(canvas,{
-    backgroundColor:'#0e0f11', scale:2,
-    x:minX, y:minY, width:maxX-minX, height:maxY-minY,
-    useCORS:true, logging:false,
-    ignoreElements:el=>el.classList.contains('node-add')||el.classList.contains('node-note-tooltip')
-  });
-  canvas.style.transform=orig;
-  return {img, W:maxX-minX, H:maxY-minY};
-}
-
-async function exportPNG(){
-  showExportMsg('正在生成 PNG...');
-  await new Promise(r=>setTimeout(r,50));
-  try{
-    const{img}=await captureCanvas();
-    const title=(document.getElementById('map-title-input').value||'mindmap').replace(/[\/\\:*?"<>|]/g,'_');
-    const a=document.createElement('a'); a.href=img.toDataURL('image/png'); a.download=title+'.png'; a.click();
-  }catch(err){alert('导出失败：'+err.message);}
-  hideExportMsg();
-}
-
-async function exportPDF(){
-  showExportMsg('正在生成 PDF...');
-  await new Promise(r=>setTimeout(r,50));
-  try{
-    const{img,W,H}=await captureCanvas();
-    const{jsPDF}=window.jspdf;
-    const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H]});
-    pdf.addImage(img.toDataURL('image/png'),'PNG',0,0,W,H);
-    const title=(document.getElementById('map-title-input').value||'mindmap').replace(/[\/\\:*?"<>|]/g,'_');
-    pdf.save(title+'.pdf');
-  }catch(err){alert('导出失败：'+err.message);}
-  hideExportMsg();
-}
-
-// HELPERS
-function findNode(node,id){if(!node)return null;if(node.id===id)return node;if(node.children)for(const c of node.children){const f=findNode(c,id);if(f)return f;}return null;}
-function getDepth(root,id,d=0){if(root.id===id)return d;if(root.children)for(const c of root.children){const r=getDepth(c,id,d+1);if(r>=0)return r;}return -1;}
-function hexDarken(hex,a){try{let r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);r=Math.floor(r*(1-a));g=Math.floor(g*(1-a));b=Math.floor(b*(1-a));return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;}catch{return hex;}}
-
-// SAVE
-function markDirty(){isDirty=true;setSaveStatus('未保存');clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,1200);}
-async function saveNow(){
-  if(!currentMapId||!mapData) return; isDirty=false;
-  const title=document.getElementById('map-title-input').value.trim()||'未命名导图';
-  mapData.text=title;
-  await apiPut(`/api/maps/${currentMapId}`,{title,data:JSON.stringify(mapData)});
-  setSaveStatus('已保存');
-}
-function setSaveStatus(msg){const el=document.getElementById('save-status');el.textContent=msg;el.className='save-status'+(msg==='已保存'?' saved':'');}
-
-// KEYBOARD
-document.addEventListener('keydown',e=>{
-  if(e.target.closest('input,textarea,[contenteditable="true"]')) return;
-  if((e.key==='Delete'||e.key==='Backspace')&&selectedNodeId){e.preventDefault();deleteNodeById(selectedNodeId);}
-  if(e.key==='Tab'){e.preventDefault();if(selectedNodeId)addChild(selectedNodeId);}
-  if(e.key==='F2'&&selectedNodeId) startEdit(selectedNodeId);
-  if((e.key==='n'||e.key==='N')&&selectedNodeId) showNoteModal(selectedNodeId);
+// Right-click on root also adds
+document.getElementById('canvas-wrap').addEventListener('dblclick', e => {
+  if (!e.target.closest('.node') && mapData) addChild(mapData.id);
 });
 
+// ── DELETE ──
+function delNode(id) {
+  if (id === mapData.id) { alert('根节点无法删除'); return; }
+  removeFromTree(mapData, id);
+  if (selectedId === id) selectedId = null;
+  markDirty(); renderAll();
+}
+function removeFromTree(node, id) {
+  if (!node.children) return false;
+  const i = node.children.findIndex(c => c.id === id);
+  if (i !== -1) { node.children.splice(i, 1); return true; }
+  return node.children.some(c => removeFromTree(c, id));
+}
+
+// ── CONTEXT MENU ──
+function showCtx(e, id) {
+  ctxId = id; selectNode(id);
+  const menu = document.getElementById('ctx-menu');
+  let lx = e.clientX, ly = e.clientY;
+  if (lx + 180 > window.innerWidth) lx = window.innerWidth - 184;
+  if (ly + 180 > window.innerHeight) ly = window.innerHeight - 184;
+  menu.style.left = lx + 'px'; menu.style.top = ly + 'px';
+  menu.classList.add('on');
+}
+function hideCtx() { document.getElementById('ctx-menu').classList.remove('on'); ctxId = null; }
+function ctxAdd() { const id = ctxId; hideCtx(); addChild(id); }
+function ctxEdit() { const id = ctxId; hideCtx(); startEdit(id); }
+function ctxNote() { const id = ctxId; hideCtx(); showNoteModal(id); }
+function ctxDel() { const id = ctxId; hideCtx(); delNode(id); }
+
+// ── NOTE MODAL ──
+function showNoteModal(id) {
+  noteId = id;
+  document.getElementById('note-input').value = nodeData[id]?.note || '';
+  updateNoteChar();
+  document.getElementById('overlay-note').classList.add('on');
+  setTimeout(() => document.getElementById('note-input').focus(), 60);
+}
+function hideNoteModal() { document.getElementById('overlay-note').classList.remove('on'); noteId = null; }
+function updateNoteChar() { const v = document.getElementById('note-input').value; document.getElementById('note-char').textContent = v.length + ' / 500'; }
+function saveNote() {
+  if (!noteId) return;
+  nodeData[noteId].note = document.getElementById('note-input').value.trim();
+  hideNoteModal(); markDirty(); renderAll(); selectNode(noteId);
+}
+function clearNote() {
+  if (!noteId) return;
+  nodeData[noteId].note = '';
+  hideNoteModal(); markDirty(); renderAll();
+}
+document.getElementById('overlay-note').addEventListener('click', e => { if (e.target === document.getElementById('overlay-note')) hideNoteModal(); });
+document.getElementById('note-input').addEventListener('keydown', e => { if (e.key === 'Escape') hideNoteModal(); });
+
+// ── NODE DRAG ──
+function onNodeMD(e, id) {
+  if (e.button !== 0 || e.target.closest('[contenteditable="true"]') || e.target.classList.contains('node-add-btn')) return;
+  const node = nodeData[id]; if (!node) return;
+  dragging = false; dragId = id;
+  dx0 = e.clientX; dy0 = e.clientY;
+  dnx = node.x; dny = node.y;
+  const onMove = e2 => {
+    const ddx = (e2.clientX - dx0) / cz, ddy = (e2.clientY - dy0) / cz;
+    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) dragging = true;
+    if (dragging) {
+      node.x = dnx + ddx; node.y = dny + ddy;
+      nodeEls[id].style.left = node.x + 'px';
+      nodeEls[id].style.top = node.y + 'px';
+      document.getElementById('connections').innerHTML = '';
+      drawAllLines(mapData);
+    }
+  };
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    if (dragging) { markDirty(); dragging = false; }
+    dragId = null;
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  e.stopPropagation();
+}
+
+// ── CANVAS PAN / ZOOM ──
+const wrap = document.getElementById('canvas-wrap');
+wrap.addEventListener('mousedown', e => {
+  if (e.button !== 0 || e.target.closest('.node')) return;
+  panning = true; px0 = e.clientX; py0 = e.clientY; pcx = cx; pcy = cy;
+  wrap.style.cursor = 'grabbing';
+});
+document.addEventListener('mousemove', e => {
+  if (!panning) return;
+  cx = pcx + (e.clientX - px0); cy = pcy + (e.clientY - py0); applyTransform();
+});
+document.addEventListener('mouseup', () => { if (panning) { panning = false; wrap.style.cursor = 'default'; } });
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.92 : 1.08;
+  const nz = Math.min(4, Math.max(0.15, cz * delta));
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  cx = mx - (mx - cx) * (nz / cz); cy = my - (my - cy) * (nz / cz);
+  cz = nz; applyTransform();
+}, { passive: false });
+
+function applyTransform() {
+  document.getElementById('canvas').style.transform = `translate(${cx}px,${cy}px) scale(${cz})`;
+}
+
+// ── GLOBAL EVENTS ──
+document.addEventListener('click', e => {
+  if (!e.target.closest('#ctx-menu')) hideCtx();
+  if (!e.target.closest('.node') && !e.target.closest('#ctx-menu')) selectNode(null);
+});
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.node')) { hideCtx(); e.preventDefault(); } });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); delNode(selectedId); }
+  if (e.key === 'Tab') { e.preventDefault(); if (selectedId) addChild(selectedId); }
+  if (e.key === 'F2' && selectedId) startEdit(selectedId);
+  if ((e.key === 'n' || e.key === 'N') && selectedId) showNoteModal(selectedId);
+  if (e.key === 'Enter' && selectedId && nodeData[selectedId]?._depth === 0) addChild(selectedId);
+});
+
+// ── EXPORT ──
+function showExp(msg) { document.getElementById('exp-msg').textContent = msg; document.getElementById('exp-overlay').classList.add('on'); }
+function hideExp() { document.getElementById('exp-overlay').classList.remove('on'); }
+
+async function captureMap() {
+  const canvas = document.getElementById('canvas');
+  const orig = canvas.style.transform;
+  canvas.style.transform = 'translate(0px,0px) scale(1)';
+  await new Promise(r => setTimeout(r, 100));
+  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  document.querySelectorAll('.node').forEach(el => {
+    const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
+    const w = el.offsetWidth, h = el.offsetHeight;
+    minX = Math.min(minX, x - w/2 - 8); minY = Math.min(minY, y - h/2 - 8);
+    maxX = Math.max(maxX, x + w/2 + 8); maxY = Math.max(maxY, y + h/2 + 8);
+  });
+  const pad = 60;
+  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+  const img = await html2canvas(canvas, {
+    backgroundColor:'#f5f5f0', scale:2,
+    x:minX, y:minY, width:maxX-minX, height:maxY-minY,
+    useCORS:true, logging:false,
+    ignoreElements: el => el.classList.contains('node-add-btn') || el.classList.contains('note-tip'),
+  });
+  canvas.style.transform = orig;
+  return { img, W: maxX - minX, H: maxY - minY };
+}
+
+async function exportPNG() {
+  showExp('正在生成 PNG...');
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const { img } = await captureMap();
+    const title = (document.getElementById('map-title-input').value || 'mindtree').replace(/[\/\\:*?"<>|]/g,'_');
+    const a = document.createElement('a'); a.href = img.toDataURL('image/png'); a.download = title + '.png'; a.click();
+  } catch(err) { alert('导出失败：' + err.message); }
+  hideExp();
+}
+
+async function exportPDF() {
+  showExp('正在生成 PDF...');
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const { img, W, H } = await captureMap();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: W > H ? 'landscape' : 'portrait', unit:'px', format:[W,H] });
+    pdf.addImage(img.toDataURL('image/png'), 'PNG', 0, 0, W, H);
+    const title = (document.getElementById('map-title-input').value || 'mindtree').replace(/[\/\\:*?"<>|]/g,'_');
+    pdf.save(title + '.pdf');
+  } catch(err) { alert('导出失败：' + err.message); }
+  hideExp();
+}
+
+// ── SAVE ──
+function markDirty() {
+  isDirty = true; setSaved(false);
+  clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 1200);
+}
+async function saveNow() {
+  if (!currentMapId || !mapData) return; isDirty = false;
+  const title = document.getElementById('map-title-input').value.trim() || '未命名导图';
+  mapData.text = title;
+  await api.put(`/api/maps/${currentMapId}`, { title, data: JSON.stringify(mapData) });
+  setSaved(true);
+}
+function setSaved(ok) {
+  const dot = document.getElementById('save-dot');
+  dot.className = 'save-dot ' + (ok ? 'saved' : 'unsaved');
+  dot.title = ok ? '已保存' : '未保存';
+}
+
+// ── INIT ──
 loadList();
 </script>
 </body>
