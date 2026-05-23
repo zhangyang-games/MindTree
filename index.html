@@ -320,6 +320,7 @@ textarea.modal-input { resize:vertical; min-height:100px; line-height:1.6; }
     </button>
     <input id="map-title-input" type="text" placeholder="导图标题..." oninput="onTitleChange()">
     <div class="nav-actions">
+      <button class="nav-btn" onclick="autoLayout(true)">整理布局</button>
       <button class="nav-btn" onclick="exportPNG()">导出 PNG</button>
       <button class="nav-btn" onclick="exportPDF()">导出 PDF</button>
       <div class="save-dot saved" id="save-dot" title="已保存"></div>
@@ -482,7 +483,13 @@ async function openMap(id) {
   const wrap = document.getElementById('canvas-wrap');
   cz = 1; cx = wrap.clientWidth / 2; cy = wrap.clientHeight / 2;
   applyTransform();
-  renderAll();
+  // Auto-layout if nodes lack position (new map or legacy data)
+  const hasPos = mapData.x !== undefined && mapData.x !== 0;
+  if (!hasPos) {
+    autoLayout(false);
+  } else {
+    renderAll();
+  }
 }
 
 function backToList() {
@@ -654,23 +661,52 @@ function startEdit(id) {
   lbl.addEventListener('blur', finish); lbl.addEventListener('keydown', onKey);
 }
 
+// ── AUTO LAYOUT ──
+const NODE_GAP_Y = 52;
+const NODE_GAP_X = 180;
+
+function subtreeHeight(node) {
+  if (!node.children || node.children.length === 0) return 1;
+  return node.children.reduce((sum, c) => sum + subtreeHeight(c), 0);
+}
+
+function layoutSubtree(node, x, topY) {
+  const h = subtreeHeight(node);
+  const centerY = topY + (h * NODE_GAP_Y) / 2;
+  node.x = x;
+  node.y = centerY;
+  if (!node.children || node.children.length === 0) return;
+  let curY = topY;
+  node.children.forEach(c => {
+    const ch = subtreeHeight(c);
+    layoutSubtree(c, x + NODE_GAP_X, curY);
+    curY += ch * NODE_GAP_Y;
+  });
+}
+
+function autoLayout(andSave) {
+  if (!mapData) return;
+  const totalH = subtreeHeight(mapData);
+  layoutSubtree(mapData, -NODE_GAP_X * 0.5, -(totalH * NODE_GAP_Y) / 2);
+  if (andSave) markDirty();
+  renderAll();
+}
+
 // ── ADD CHILD ──
 function addChild(parentId) {
   const parent = nodeData[parentId]; if (!parent) return;
   const siblings = parent.children ? parent.children.length : 0;
-  const depth = (parent._depth || 0) + 1;
-
-  // Position: fan out to the right and below
   const child = {
     id: uid(), text: '新节点',
-    x: parent.x + 200,
-    y: parent.y + (siblings * 50) - (siblings > 0 ? (siblings - 1) * 25 : 0),
+    x: parent.x + NODE_GAP_X,
+    y: parent.y + siblings * NODE_GAP_Y,
     children: [], note: '',
   };
   if (!parent.children) parent.children = [];
   parent.children.push(child);
-  markDirty(); renderAll(); selectNode(child.id);
-  setTimeout(() => startEdit(child.id), 40);
+  autoLayout(true);
+  selectNode(child.id);
+  setTimeout(() => startEdit(child.id), 60);
 }
 
 // Right-click on root also adds
