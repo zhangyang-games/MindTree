@@ -439,18 +439,22 @@ function backToList(){
 }
 
 // ═══ LAYOUT ═══
-const GX=190,GY=56;
+const GX=200, GY=62;
 function leafCount(n){if(!n.children||!n.children.length)return 1;return n.children.reduce((s,c)=>s+leafCount(c),0)}
-function layout(n,x,topY){
-  const lc=leafCount(n);n.x=x;n.y=topY+(lc*GY)/2;
-  if(!n.children||!n.children.length)return;
+
+function layout(n, x, topY){
+  const lc=leafCount(n); n.x=x; n.y=topY+(lc*GY)/2;
+  if(!n.children||!n.children.length) return;
   let curY=topY;
   n.children.forEach(c=>{const cl=leafCount(c);layout(c,x+GX,curY);curY+=cl*GY;});
 }
+
 function autoLayout(andSave){
-  if(!mapData)return;
-  const total=leafCount(mapData);layout(mapData,-GX*.4,-(total*GY)/2);
-  if(andSave)markDirty();renderAll();
+  if(!mapData) return;
+  const total=leafCount(mapData);
+  layout(mapData, -GX*0.4, -(total*GY)/2);
+  if(andSave) markDirty();
+  renderAll();
 }
 
 // ═══ RENDER ═══
@@ -516,19 +520,48 @@ function renderNode(n){
 }
 
 function drawLines(n){if(!n.children)return;n.children.forEach(c=>{drawLine(n,c);drawLines(c)})}
-function drawLine(par,child){
-  const svg=document.getElementById('svg-lines'),pe=nodeEls[par.id],ce=nodeEls[child.id];
-  if(!pe||!ce)return;
+function drawLine(par, child){
+  const svg=document.getElementById('svg-lines'), pe=nodeEls[par.id], ce=nodeEls[child.id];
+  if(!pe||!ce) return;
   const col=child._col||PAL[0];
-  const pw=pe.offsetWidth,cw=ce.offsetWidth;
-  const p1x=par.x+pw/2,p1y=par.y,c1x=child.x+cw/2,c1y=child.y;
-  const mx=(p1x+c1x)/2;
+  const pw=pe.offsetWidth, ph=pe.offsetHeight;
+  const cw=ce.offsetWidth, ch=ce.offsetHeight;
+  const dep=child._dep||1;
+
+  // Start: right edge center of parent
+  const x1=par.x+pw/2, y1=par.y;
+  // End: left edge center of child (at its text baseline)
+  const x2=child.x-cw/2+8, y2=child.y;
+
+  // Organic S-curve: control points pulled in the direction of travel
+  const dx=x2-x1, dy=y2-y1;
+  const pull=Math.min(Math.abs(dx)*0.55, 120);
+  const cx1=x1+pull, cy1=y1;
+  const cx2=x2-pull*0.4, cy2=y2;
+
+  // Stroke width tapers with depth
+  const sw=Math.max(1.2, 5.5-dep*1.1);
+
+  // Use a path with stroke for the main line
   const path=document.createElementNS('http://www.w3.org/2000/svg','path');
-  path.setAttribute('d',`M ${p1x} ${p1y} C ${mx} ${p1y}, ${mx} ${c1y}, ${c1x} ${c1y}`);
-  path.setAttribute('stroke',col);
-  path.setAttribute('stroke-width',Math.max(1.5,4.5-(child._dep||1)*.9));
-  path.setAttribute('fill','none');path.setAttribute('stroke-linecap','round');path.setAttribute('opacity','.9');
+  path.setAttribute('d',`M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`);
+  path.setAttribute('stroke', col);
+  path.setAttribute('stroke-width', sw);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke-linecap','round');
+  path.setAttribute('opacity', dep===1?'0.85':'0.75');
   svg.appendChild(path);
+
+  // Small dot at the child end for visual anchor
+  if(dep<=2){
+    const dot=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', x2);
+    dot.setAttribute('cy', y2);
+    dot.setAttribute('r', dep===1?3:2);
+    dot.setAttribute('fill', col);
+    dot.setAttribute('opacity','0.7');
+    svg.appendChild(dot);
+  }
 }
 
 // ═══ SELECT ═══
