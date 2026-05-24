@@ -622,10 +622,22 @@ function startEdit(id){
 // ═══ ADD CHILD ═══
 function addChild(parentId){
   const parent=nodeMap[parentId];if(!parent)return;
-  const child={id:uid(),text:'新节点',html:'',x:parent.x+GX,y:parent.y,children:[],note:'',img:''};
+  // Place new child to the right, below existing siblings — no full relayout
+  const siblings=parent.children?parent.children.length:0;
+  const offsetY=siblings===0?0:(siblings%2===0?1:-1)*Math.ceil(siblings/2)*GY;
+  const child={
+    id:uid(),text:'新节点',html:'',
+    x:parent.x+GX,
+    y:parent.y+offsetY,
+    children:[],note:'',img:''
+  };
   if(!parent.children)parent.children=[];
   parent.children.push(child);
-  autoLayout(true);selectNode(child.id);
+  // Update nodeMap immediately so the new node is draggable right away
+  nodeMap[child.id]=child;
+  markDirty();
+  renderAll();
+  selectNode(child.id);
   setTimeout(()=>startEdit(child.id),60);
 }
 document.getElementById('canvas-wrap').addEventListener('dblclick',e=>{
@@ -729,17 +741,29 @@ function ctxEdit(){const id=ctxId;hideCtx();startEdit(id)}
 function ctxNote(){const id=ctxId;hideCtx();showNoteModal(id)}
 function ctxDel(){const id=ctxId;hideCtx();delNode(id)}
 
+// ═══ SUBTREE MOVE ═══
+function moveSubtree(node, dx, dy){
+  node.x=(node.x||0)+dx; node.y=(node.y||0)+dy;
+  if(nodeEls[node.id]){
+    nodeEls[node.id].style.left=node.x+'px';
+    nodeEls[node.id].style.top=node.y+'px';
+  }
+  if(node.children) node.children.forEach(c=>moveSubtree(c,dx,dy));
+}
+
 // ═══ NODE DRAG ═══
 function onNodeMD(e,id){
   if(e.button!==0||e.target.closest('[contenteditable="true"]')||e.target.classList.contains('node-add-btn')||e.target.classList.contains('node-img'))return;
   const node=nodeMap[id];if(!node)return;
-  dragging=false;dragId=id;dx0=e.clientX;dy0=e.clientY;dnx=node.x;dny=node.y;
+  dragging=false;dragId=id;dx0=e.clientX;dy0=e.clientY;dnx=node.x||0;dny=node.y||0;
   const onMove=e2=>{
     const ddx=(e2.clientX-dx0)/cz,ddy=(e2.clientY-dy0)/cz;
     if(Math.abs(ddx)>3||Math.abs(ddy)>3)dragging=true;
     if(dragging){
-      node.x=dnx+ddx;node.y=dny+ddy;
-      nodeEls[id].style.left=node.x+'px';nodeEls[id].style.top=node.y+'px';
+      const newX=dnx+ddx, newY=dny+ddy;
+      const deltax=newX-(node.x||0), deltay=newY-(node.y||0);
+      // Move entire subtree
+      moveSubtree(node, deltax, deltay);
       document.getElementById('svg-lines').innerHTML='';
       requestAnimationFrame(()=>drawLines(mapData));
     }
