@@ -2,914 +2,849 @@
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>MindTree</title>
+<!-- PWA / iOS icon -->
+<link rel="apple-touch-icon" href="/logo.png">
+<link rel="icon" type="image/png" href="/logo.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="MindTree">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
   --bg: #f5f5f0;
-  --panel-bg: #ffffff;
+  --white: #ffffff;
   --text: #333;
-  --text-dim: #999;
+  --dim: #999;
   --border: #e0e0e0;
-  --accent: #4a9d6f;
-  --shadow: 0 2px 12px rgba(0,0,0,0.1);
-  /* Branch palette - Coggle-like warm tones */
-  --c0: #e8735a; /* root warm red */
-  --c1: #e8a23a;
-  --c2: #6db56d;
-  --c3: #5a9fd4;
-  --c4: #a06db5;
-  --c5: #d45a9f;
-  --c6: #5ab5b5;
-  --c7: #b5a05a;
+  --shadow: 0 2px 16px rgba(0,0,0,0.10);
+  --P0:#e8735a; --P1:#e8a23a; --P2:#6db56d; --P3:#5a9fd4;
+  --P4:#a06db5; --P5:#d45a9f; --P6:#5ab5b5; --P7:#b5a05a;
+}
+html,body { width:100%;height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans SC',sans-serif;overflow:hidden; }
+
+/* ══ LOGIN PAGE ══ */
+#login-page {
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;height:100%;
+  background:linear-gradient(135deg,#f8f6f2 0%,#ede9e0 100%);
+}
+.login-logo {
+  display:flex;align-items:center;gap:12px;margin-bottom:36px;
+}
+.login-logo img { width:52px;height:52px;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,0.12); }
+.login-logo-text { font-size:1.8rem;font-weight:500;color:#444;letter-spacing:0.03em; }
+.login-logo-text span { color:var(--P0); }
+
+.login-box {
+  background:var(--white);border-radius:16px;padding:36px 32px;
+  width:340px;box-shadow:0 8px 40px rgba(0,0,0,0.12);
+}
+.login-box h2 { font-size:1rem;font-weight:400;color:var(--dim);margin-bottom:24px;text-align:center; }
+
+.lf-group { margin-bottom:16px; }
+.lf-label { font-size:0.78rem;color:#777;margin-bottom:6px;display:block; }
+.lf-input {
+  width:100%;border:1px solid var(--border);border-radius:8px;
+  padding:11px 14px;font-family:'Noto Sans SC',sans-serif;
+  font-size:0.92rem;color:var(--text);outline:none;
+  transition:border-color 0.2s;
+}
+.lf-input:focus { border-color:#bbb; }
+
+.lf-err {
+  color:#e87;font-size:0.78rem;margin-top:4px;
+  min-height:18px;
 }
 
-html, body { width:100%; height:100%; background:var(--bg); color:var(--text); font-family:'Noto Sans SC',sans-serif; overflow:hidden; }
-
-/* ── LIST VIEW ── */
-#list-view {
-  width:100%; height:100%;
-  display:flex; flex-direction:column; align-items:center;
-  overflow-y:auto; padding:48px 24px 40px;
-  background: var(--bg);
+.login-btn {
+  width:100%;padding:12px;border:none;border-radius:24px;
+  background:var(--P0);color:#fff;font-family:'Noto Sans SC',sans-serif;
+  font-size:0.95rem;font-weight:500;cursor:pointer;margin-top:8px;
+  box-shadow:0 4px 16px rgba(232,115,90,0.3);transition:filter 0.15s;
 }
+.login-btn:hover { filter:brightness(1.08); }
+.login-btn:disabled { opacity:0.6;cursor:default; }
 
-.list-top {
-  width:100%; max-width:640px;
-  display:flex; align-items:center; justify-content:space-between;
-  margin-bottom:32px;
+/* ══ MAIN APP ══ */
+#app { display:none;width:100%;height:100%;flex-direction:column; }
+
+/* ── NAV BAR ── */
+.nav {
+  height:50px;background:var(--white);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 14px;gap:10px;
+  flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);z-index:200;
 }
-
-.list-logo {
-  font-size:1.4rem; font-weight:500; color:#555;
-  letter-spacing:0.02em;
-}
-.list-logo span { color:var(--c0); }
-
-.new-btn {
-  display:flex; align-items:center; gap:8px;
-  background: var(--c0); color:#fff;
-  border:none; padding:9px 20px; border-radius:20px;
-  cursor:pointer; font-family:'Noto Sans SC',sans-serif;
-  font-size:0.88rem; font-weight:500;
-  transition:filter 0.15s; box-shadow: 0 2px 8px rgba(232,115,90,0.35);
-}
-.new-btn:hover { filter:brightness(1.08); }
-
-.maps-grid { width:100%; max-width:640px; display:flex; flex-direction:column; gap:8px; }
-
-.map-card {
-  background:var(--panel-bg); border:1px solid var(--border);
-  border-radius:10px; padding:16px 18px;
-  cursor:pointer; transition:all 0.18s;
-  display:flex; align-items:center; gap:14px;
-}
-.map-card:hover { box-shadow:var(--shadow); border-color:#ccc; transform:translateY(-1px); }
-
-.map-card-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.map-card-title { font-size:0.95rem; font-weight:500; color:var(--text); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.map-card-meta { font-size:0.75rem; color:var(--text-dim); white-space:nowrap; flex-shrink:0; }
-.map-card-del { background:none; border:none; color:#ccc; cursor:pointer; padding:4px; border-radius:4px; display:flex; transition:color 0.15s; }
-.map-card-del:hover { color:#e87; }
-
-.empty-state { text-align:center; color:var(--text-dim); font-size:0.85rem; padding:60px 0; }
-
-/* ── EDITOR VIEW ── */
-#editor-view { display:none; width:100%; height:100%; flex-direction:column; }
-
-.editor-nav {
-  height:48px; background:var(--panel-bg);
-  border-bottom:1px solid var(--border);
-  display:flex; align-items:center; padding:0 16px; gap:10px;
-  flex-shrink:0; z-index:200;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
+.nav-logo { display:flex;align-items:center;gap:8px;text-decoration:none; }
+.nav-logo img { width:28px;height:28px;border-radius:6px; }
+.nav-logo-text { font-size:1rem;font-weight:500;color:#555; }
+.nav-logo-text span { color:var(--P0); }
 
 .nav-back {
-  background:none; border:none; color:#999; cursor:pointer;
-  padding:5px 8px; border-radius:6px; display:flex; align-items:center;
-  gap:5px; font-size:0.82rem; font-family:'Noto Sans SC',sans-serif;
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  padding:5px 8px;border-radius:6px;display:flex;align-items:center;
+  gap:4px;font-size:0.8rem;font-family:'Noto Sans SC',sans-serif;
   transition:color 0.15s;
 }
 .nav-back:hover { color:#555; }
 
 #map-title-input {
-  flex:1; background:none; border:none; color:var(--text);
-  font-family:'Noto Sans SC',sans-serif; font-size:0.95rem;
-  font-weight:500; outline:none;
+  flex:1;background:none;border:none;color:var(--text);
+  font-family:'Noto Sans SC',sans-serif;font-size:0.95rem;
+  font-weight:500;outline:none;
 }
-#map-title-input::placeholder { color:#bbb; }
+#map-title-input::placeholder { color:#ccc; }
 
-.nav-actions { display:flex; gap:6px; align-items:center; }
-
+.nav-actions { display:flex;gap:6px;align-items:center;margin-left:auto; }
 .nav-btn {
-  display:flex; align-items:center; gap:5px;
-  background:none; border:1px solid var(--border);
-  color:#888; padding:5px 12px; border-radius:16px;
-  cursor:pointer; font-family:'Noto Sans SC',sans-serif;
-  font-size:0.75rem; transition:all 0.15s;
+  background:none;border:1px solid var(--border);color:#888;
+  padding:5px 11px;border-radius:14px;cursor:pointer;
+  font-family:'Noto Sans SC',sans-serif;font-size:0.73rem;
+  transition:all 0.15s;white-space:nowrap;
 }
-.nav-btn:hover { border-color:#aaa; color:#555; }
+.nav-btn:hover { border-color:#bbb;color:#555; }
+.nav-btn.danger:hover { border-color:#e8a;color:#e87; }
 
-.save-dot {
-  width:7px; height:7px; border-radius:50%;
-  background:#ccc; flex-shrink:0; transition:background 0.3s;
+.save-dot { width:7px;height:7px;border-radius:50%;background:#ddd;transition:background 0.3s; }
+.save-dot.ok { background:#6db56d; }
+.save-dot.dirty { background:#e8a23a; }
+
+/* ── VIEWS ── */
+#list-view {
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;
+  align-items:center;padding:40px 20px;
 }
-.save-dot.saved { background:#6db56d; }
-.save-dot.unsaved { background:#e8a23a; }
+#editor-view { flex:1;display:none;overflow:hidden;position:relative; }
+
+/* ── LIST ── */
+.list-section { width:100%;max-width:600px; }
+.list-header {
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:20px;
+}
+.list-title { font-size:1rem;font-weight:500;color:#666; }
+
+.new-btn {
+  display:flex;align-items:center;gap:7px;
+  background:var(--P0);color:#fff;border:none;
+  padding:9px 18px;border-radius:20px;cursor:pointer;
+  font-family:'Noto Sans SC',sans-serif;font-size:0.85rem;font-weight:500;
+  box-shadow:0 3px 12px rgba(232,115,90,0.3);transition:filter 0.15s;
+}
+.new-btn:hover { filter:brightness(1.08); }
+
+.map-card {
+  background:var(--white);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;cursor:pointer;transition:all 0.18s;
+  display:flex;align-items:center;gap:12px;margin-bottom:8px;
+}
+.map-card:hover { box-shadow:var(--shadow);border-color:#ccc;transform:translateY(-1px); }
+.card-dot { width:9px;height:9px;border-radius:50%;flex-shrink:0; }
+.card-title { font-size:0.92rem;font-weight:500;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.card-meta { font-size:0.72rem;color:var(--dim);white-space:nowrap;flex-shrink:0; }
+.card-del { background:none;border:none;color:#ccc;cursor:pointer;padding:4px;border-radius:4px;display:flex;transition:color 0.15s; }
+.card-del:hover { color:#e87; }
+.empty { text-align:center;color:var(--dim);font-size:0.85rem;padding:60px 0; }
 
 /* ── CANVAS ── */
 #canvas-wrap {
-  flex:1; overflow:hidden; position:relative;
-  cursor:default; user-select:none;
-  background: radial-gradient(circle at 50% 50%, #fafafa 0%, #f0f0eb 100%);
+  width:100%;height:100%;overflow:hidden;position:absolute;
+  cursor:default;user-select:none;
+  background:radial-gradient(circle at 50% 50%,#fafafa 0%,#f0f0eb 100%);
 }
-
-#canvas {
-  position:absolute; top:0; left:0;
-  transform-origin:0 0;
-}
-
-svg#connections {
-  position:absolute; top:0; left:0;
-  width:200000px; height:200000px;
-  pointer-events:none; overflow:visible;
-}
+#canvas { position:absolute;top:0;left:0;transform-origin:0 0; }
+svg#svg-lines { position:absolute;top:0;left:0;width:200000px;height:200000px;pointer-events:none;overflow:visible; }
 
 /* ── NODES ── */
-.node {
-  position:absolute;
-  cursor:pointer;
-  transform:translate(-50%, -50%);
+.node { position:absolute;transform:translate(-50%,-50%);cursor:pointer; }
+
+.root-box {
+  display:inline-flex;align-items:center;
+  background:#5a5a5a;color:#fff;
+  font-size:1rem;font-weight:500;
+  padding:9px 20px 9px 16px;border-radius:6px;
+  white-space:nowrap;position:relative;
+  box-shadow:0 2px 8px rgba(0,0,0,0.2);
+}
+.root-box::after {
+  content:'';position:absolute;right:-11px;top:50%;transform:translateY(-50%);
+  border:11px solid transparent;border-left:11px solid #5a5a5a;border-right:none;
 }
 
-/* Root node: Coggle-style arrow label */
-.node-root-box {
-  display:flex; align-items:center;
-  background:#616161; color:#fff;
-  font-size:1rem; font-weight:500;
-  padding:8px 18px 8px 16px;
-  border-radius:4px;
-  position:relative;
-  white-space:nowrap;
-  min-width:80px;
-  cursor:text;
-}
-/* Arrow tip on right */
-.node-root-box::after {
-  content:'';
-  position:absolute; right:-10px; top:50%;
-  transform:translateY(-50%);
-  border:10px solid transparent;
-  border-left:10px solid #616161;
-  border-right:none;
-}
-.node-root-box.editing { outline:none; }
-
-/* Branch/leaf nodes: just text, colored */
 .node-label {
-  font-size:0.92rem; font-weight:400;
-  padding:3px 0;
-  white-space:nowrap;
-  cursor:text;
-  position:relative;
-  line-height:1.4;
+  font-size:0.9rem;font-weight:400;padding:2px 0;
+  white-space:nowrap;position:relative;line-height:1.5;
 }
 
-/* Hover add button: little circle on the end of the line */
 .node-add-btn {
-  position:absolute;
-  width:18px; height:18px;
-  border-radius:50%;
-  border:2px solid currentColor;
-  background:#fff;
-  display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:bold; line-height:1;
-  cursor:pointer;
-  opacity:0;
-  transition:opacity 0.15s;
-  pointer-events:all;
-  right:-24px; top:50%; transform:translateY(-50%);
+  position:absolute;right:-22px;top:50%;transform:translateY(-50%);
+  width:16px;height:16px;border-radius:50%;
+  border:1.5px solid currentColor;background:var(--white);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:bold;cursor:pointer;
+  opacity:0;transition:opacity 0.15s;pointer-events:all;
 }
 .node:hover .node-add-btn { opacity:1; }
 
-/* Note dot */
 .note-dot {
-  position:absolute; top:-4px; right:-4px;
-  width:8px; height:8px; border-radius:50%;
-  background:#e8a23a; border:1.5px solid #fff;
-  pointer-events:none;
+  position:absolute;top:-4px;right:-4px;
+  width:8px;height:8px;border-radius:50%;
+  background:#e8a23a;border:1.5px solid var(--white);pointer-events:none;
 }
-
-/* Note tooltip */
 .note-tip {
-  position:absolute; bottom:calc(100% + 8px); left:50%;
-  transform:translateX(-50%);
-  background:#fff; border:1px solid #e0e0e0;
-  border-radius:8px; padding:8px 12px;
-  font-size:0.78rem; color:#666; max-width:220px;
-  white-space:pre-wrap; word-break:break-word;
+  position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:var(--white);border:1px solid var(--border);border-radius:8px;
+  padding:8px 12px;font-size:0.76rem;color:#666;max-width:200px;
+  white-space:pre-wrap;word-break:break-word;
   box-shadow:0 4px 16px rgba(0,0,0,0.1);
-  pointer-events:none; opacity:0;
-  transition:opacity 0.15s; z-index:100;
-  text-align:left;
+  pointer-events:none;opacity:0;transition:opacity 0.15s;z-index:100;
 }
 .node:hover .note-tip { opacity:1; }
+.node-box-edit,[contenteditable="true"] { outline:none;cursor:text; }
 
 /* ── CONTEXT MENU ── */
-#ctx-menu {
-  position:fixed; background:#fff;
-  border:1px solid #e8e8e8; border-radius:10px;
-  box-shadow:0 4px 20px rgba(0,0,0,0.12);
-  min-width:160px; z-index:9999;
-  display:none; overflow:hidden;
-}
-#ctx-menu.on { display:block; animation:popIn 0.1s ease; }
-@keyframes popIn { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
-
-.ctx-item {
-  padding:10px 16px; font-size:0.85rem;
-  cursor:pointer; color:#555;
-  display:flex; align-items:center; gap:10px;
-  transition:background 0.1s;
-}
-.ctx-item:hover { background:#f7f7f7; color:#333; }
-.ctx-item.red:hover { color:#e87; }
-.ctx-sep { height:1px; background:#f0f0f0; margin:3px 0; }
+#ctx { position:fixed;background:var(--white);border:1px solid #e8e8e8;border-radius:10px;box-shadow:0 4px 20px rgba(0,0,0,0.12);min-width:158px;z-index:9999;display:none;overflow:hidden; }
+#ctx.on { display:block;animation:pop 0.1s ease; }
+@keyframes pop { from{opacity:0;transform:scale(0.95)} to{opacity:1;transform:scale(1)} }
+.ci { padding:10px 15px;font-size:0.83rem;cursor:pointer;color:#555;display:flex;align-items:center;gap:9px;transition:background 0.1s; }
+.ci:hover { background:#f7f7f7;color:#333; }
+.ci.red:hover { color:#e87; }
+.csep { height:1px;background:#f0f0f0;margin:3px 0; }
 
 /* ── MODALS ── */
-.overlay {
-  position:fixed; inset:0; background:rgba(0,0,0,0.35);
-  display:none; align-items:center; justify-content:center;
-  z-index:10000; backdrop-filter:blur(2px);
-}
-.overlay.on { display:flex; }
+.ov { position:fixed;inset:0;background:rgba(0,0,0,0.35);display:none;align-items:center;justify-content:center;z-index:10000;backdrop-filter:blur(2px); }
+.ov.on { display:flex; }
+.modal { background:var(--white);border-radius:14px;padding:26px 24px;width:380px;box-shadow:0 8px 40px rgba(0,0,0,0.15);animation:pop 0.15s ease; }
+.modal h3 { font-size:0.95rem;font-weight:500;color:#333;margin-bottom:16px; }
+.mi { width:100%;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-family:'Noto Sans SC',sans-serif;font-size:0.88rem;color:var(--text);outline:none;transition:border-color 0.2s;margin-bottom:12px;display:block; }
+.mi:focus { border-color:#bbb; }
+textarea.mi { resize:vertical;min-height:90px;line-height:1.6; }
+.mchar { font-size:0.68rem;color:var(--dim);text-align:right;margin-top:-6px;margin-bottom:12px; }
+.mbtns { display:flex;gap:8px;justify-content:flex-end;align-items:center; }
+.mb { padding:8px 18px;border-radius:18px;border:none;cursor:pointer;font-family:'Noto Sans SC',sans-serif;font-size:0.83rem;transition:all 0.15s; }
+.mb-c { background:#f5f5f5;color:#888; } .mb-c:hover { background:#eee; }
+.mb-ok { background:var(--P0);color:#fff;font-weight:500;box-shadow:0 2px 8px rgba(232,115,90,0.25); } .mb-ok:hover { filter:brightness(1.08); }
+.mb-d { background:none;border:1px solid #f5c0b0;color:#e87;margin-right:auto; } .mb-d:hover { background:#fff5f3; }
+.mb-gray { background:#f0f0f0;color:#666; } .mb-gray:hover { background:#e8e8e8; }
+.modal-err { color:#e87;font-size:0.78rem;margin-top:-6px;margin-bottom:10px;min-height:18px; }
 
-.modal {
-  background:#fff; border-radius:14px;
-  padding:28px 26px; width:400px;
-  box-shadow:0 8px 40px rgba(0,0,0,0.15);
-  animation:popIn 0.15s ease;
-}
-.modal h3 { font-size:1rem; font-weight:500; color:#333; margin-bottom:18px; }
+/* ── EXPORT OVERLAY ── */
+#exp-ov { position:fixed;inset:0;background:rgba(255,255,255,0.8);display:none;align-items:center;justify-content:center;z-index:10000; }
+#exp-ov.on { display:flex; }
+.exp-msg { color:#999;font-size:0.88rem; }
 
-.modal-input {
-  width:100%; border:1px solid #ddd; border-radius:8px;
-  padding:10px 13px; font-family:'Noto Sans SC',sans-serif;
-  font-size:0.9rem; color:#333; outline:none;
-  transition:border-color 0.2s; margin-bottom:14px; display:block;
+/* ── TOAST ── */
+#toast {
+  position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#333;color:#fff;padding:9px 20px;border-radius:20px;
+  font-size:0.82rem;opacity:0;transition:all 0.3s;pointer-events:none;z-index:20000;
 }
-.modal-input:focus { border-color:#aaa; }
-textarea.modal-input { resize:vertical; min-height:100px; line-height:1.6; }
-.modal-char { font-size:0.7rem; color:#bbb; text-align:right; margin-top:-8px; margin-bottom:14px; }
-
-.modal-btns { display:flex; gap:8px; justify-content:flex-end; align-items:center; }
-.mbtn {
-  padding:8px 20px; border-radius:20px; border:none;
-  cursor:pointer; font-family:'Noto Sans SC',sans-serif;
-  font-size:0.85rem; transition:all 0.15s;
-}
-.mbtn-cancel { background:#f5f5f5; color:#888; }
-.mbtn-cancel:hover { background:#eee; }
-.mbtn-ok { background:var(--c0); color:#fff; font-weight:500; box-shadow:0 2px 8px rgba(232,115,90,0.3); }
-.mbtn-ok:hover { filter:brightness(1.08); }
-.mbtn-del { background:none; border:1px solid #f5c0b0; color:#e87; margin-right:auto; }
-.mbtn-del:hover { background:#fff5f3; }
-
-/* Export overlay */
-#exp-overlay {
-  position:fixed; inset:0; background:rgba(255,255,255,0.8);
-  display:none; align-items:center; justify-content:center;
-  z-index:10000;
-}
-#exp-overlay.on { display:flex; }
-.exp-msg { color:#888; font-size:0.9rem; }
-
-::-webkit-scrollbar { width:5px; }
-::-webkit-scrollbar-track { background:transparent; }
-::-webkit-scrollbar-thumb { background:#ddd; border-radius:3px; }
+#toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
 </style>
 </head>
 <body>
 
-<!-- LIST VIEW -->
-<div id="list-view">
-  <div class="list-top">
-    <div class="list-logo">Mind<span>Tree</span></div>
-    <button class="new-btn" onclick="showNewModal()">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
-      新建导图
-    </button>
+<!-- ══ LOGIN PAGE ══ -->
+<div id="login-page">
+  <div class="login-logo">
+    <img src="/logo.png" onerror="this.style.display='none'" alt="MindTree">
+    <div class="login-logo-text">Mind<span>Tree</span></div>
   </div>
-  <div class="maps-grid" id="maps-grid">
-    <div class="empty-state">还没有导图，点击右上角新建一张</div>
+  <div class="login-box">
+    <h2>登录你的思维导图</h2>
+    <div class="lf-group">
+      <label class="lf-label">用户名</label>
+      <input id="lf-user" class="lf-input" type="text" placeholder="admin" autocomplete="username">
+    </div>
+    <div class="lf-group">
+      <label class="lf-label">密码</label>
+      <input id="lf-pass" class="lf-input" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <div class="lf-err" id="lf-err"></div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()">登 录</button>
   </div>
 </div>
 
-<!-- EDITOR VIEW -->
-<div id="editor-view">
-  <div class="editor-nav">
-    <button class="nav-back" onclick="backToList()">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      全部导图
-    </button>
-    <input id="map-title-input" type="text" placeholder="导图标题..." oninput="onTitleChange()">
-    <div class="nav-actions">
-      <button class="nav-btn" onclick="autoLayout(true)">整理布局</button>
-      <button class="nav-btn" onclick="exportPNG()">导出 PNG</button>
-      <button class="nav-btn" onclick="exportPDF()">导出 PDF</button>
-      <div class="save-dot saved" id="save-dot" title="已保存"></div>
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+  <!-- NAV -->
+  <div class="nav" id="nav-bar">
+    <!-- list mode: logo + logout -->
+    <div id="nav-list-mode" style="display:flex;align-items:center;gap:10px;width:100%;">
+      <div class="nav-logo">
+        <img src="/logo.png" onerror="this.style.display='none'" alt="">
+        <span class="nav-logo-text">Mind<span>Tree</span></span>
+      </div>
+      <div class="nav-actions">
+        <button class="nav-btn" onclick="showChangePw()">修改密码</button>
+        <button class="nav-btn danger" onclick="doLogout()">退出</button>
+      </div>
+    </div>
+    <!-- editor mode: back + title + actions -->
+    <div id="nav-editor-mode" style="display:none;align-items:center;gap:10px;width:100%;">
+      <button class="nav-back" onclick="backToList()">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M9 3L4.5 7.5 9 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        全部导图
+      </button>
+      <input id="map-title-input" type="text" placeholder="导图标题..." oninput="markDirty()">
+      <div class="nav-actions">
+        <button class="nav-btn" onclick="autoLayout(true)">整理布局</button>
+        <button class="nav-btn" onclick="exportPNG()">PNG</button>
+        <button class="nav-btn" onclick="exportPDF()">PDF</button>
+        <div class="save-dot ok" id="save-dot" title="已保存"></div>
+      </div>
     </div>
   </div>
-  <div id="canvas-wrap">
-    <div id="canvas">
-      <svg id="connections"></svg>
-    </div>
-  </div>
-</div>
 
-<!-- New Map Modal -->
-<div class="overlay" id="overlay-new">
-  <div class="modal">
-    <h3>新建思维导图</h3>
-    <input id="new-title-input" class="modal-input" type="text" placeholder="给这张导图起个名字..." maxlength="40">
-    <div class="modal-btns">
-      <button class="mbtn mbtn-cancel" onclick="hideNewModal()">取消</button>
-      <button class="mbtn mbtn-ok" onclick="confirmNew()">创建</button>
+  <!-- LIST VIEW -->
+  <div id="list-view">
+    <div class="list-section">
+      <div class="list-header">
+        <span class="list-title">我的导图</span>
+        <button class="new-btn" onclick="showNewModal()">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+          新建导图
+        </button>
+      </div>
+      <div id="cards"></div>
     </div>
   </div>
-</div>
 
-<!-- Note Modal -->
-<div class="overlay" id="overlay-note">
-  <div class="modal">
-    <h3>节点备注</h3>
-    <textarea id="note-input" class="modal-input" placeholder="输入备注内容..." maxlength="500" rows="5" oninput="updateNoteChar()"></textarea>
-    <div class="modal-char" id="note-char">0 / 500</div>
-    <div class="modal-btns">
-      <button class="mbtn mbtn-del" onclick="clearNote()">清除备注</button>
-      <button class="mbtn mbtn-cancel" onclick="hideNoteModal()">取消</button>
-      <button class="mbtn mbtn-ok" onclick="saveNote()">保存</button>
+  <!-- EDITOR VIEW -->
+  <div id="editor-view">
+    <div id="canvas-wrap">
+      <div id="canvas">
+        <svg id="svg-lines"></svg>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- Context Menu -->
-<div id="ctx-menu">
-  <div class="ctx-item" onclick="ctxAdd()">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-    添加子节点
-  </div>
-  <div class="ctx-item" onclick="ctxEdit()">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 9.5L9 2.5l1.5 1.5-7 7H2V9.5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-    编辑文字
-  </div>
-  <div class="ctx-item" onclick="ctxNote()">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="1.5" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M3.5 4.5h6M3.5 6.5h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-    编辑备注
-  </div>
-  <div class="ctx-sep"></div>
-  <div class="ctx-item red" onclick="ctxDel()">
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 5.5v4M8 5.5v4M2.5 3.5l.8 7h6.4l.8-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-    删除节点
+<div id="ctx">
+  <div class="ci" onclick="ctxAdd()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>添加子节点</div>
+  <div class="ci" onclick="ctxEdit()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 9L8.5 2l1.5 1.5-7 7H1.5V9z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>编辑文字</div>
+  <div class="ci" onclick="ctxNote()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M3 4h6M3 6.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>编辑备注</div>
+  <div class="csep"></div>
+  <div class="ci red" onclick="ctxDel()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M1.5 3h9M4 3V2h4v1M4.5 5v4M7.5 5v4M2 3l.7 7h6.6l.7-7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>删除节点</div>
+</div>
+
+<!-- New Map Modal -->
+<div class="ov" id="ov-new">
+  <div class="modal">
+    <h3>新建思维导图</h3>
+    <input id="new-title" class="mi" type="text" placeholder="给这张导图起个名字..." maxlength="40">
+    <div class="mbtns">
+      <button class="mb mb-c" onclick="hideOv('ov-new')">取消</button>
+      <button class="mb mb-ok" onclick="confirmNew()">创建</button>
+    </div>
   </div>
 </div>
 
-<!-- Export overlay -->
-<div id="exp-overlay">
-  <div class="exp-msg" id="exp-msg">正在生成...</div>
+<!-- Note Modal -->
+<div class="ov" id="ov-note">
+  <div class="modal">
+    <h3>节点备注</h3>
+    <textarea id="note-input" class="mi" placeholder="输入备注..." maxlength="500" rows="4" oninput="updateNoteChar()"></textarea>
+    <div class="mchar" id="note-char">0 / 500</div>
+    <div class="mbtns">
+      <button class="mb mb-d" onclick="clearNote()">清除备注</button>
+      <button class="mb mb-c" onclick="hideOv('ov-note')">取消</button>
+      <button class="mb mb-ok" onclick="saveNote()">保存</button>
+    </div>
+  </div>
 </div>
+
+<!-- Change Password Modal -->
+<div class="ov" id="ov-pw">
+  <div class="modal">
+    <h3>修改密码</h3>
+    <input id="pw-old" class="mi" type="password" placeholder="原密码">
+    <input id="pw-new" class="mi" type="password" placeholder="新密码（至少6位）">
+    <input id="pw-new2" class="mi" type="password" placeholder="确认新密码">
+    <div class="modal-err" id="pw-err"></div>
+    <div class="mbtns">
+      <button class="mb mb-c" onclick="hideOv('ov-pw')">取消</button>
+      <button class="mb mb-ok" onclick="confirmChangePw()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Overlay -->
+<div id="exp-ov"><div class="exp-msg" id="exp-msg">正在生成...</div></div>
+
+<!-- Toast -->
+<div id="toast"></div>
 
 <script>
-// ── PALETTE ── (Coggle-style warm branch colors)
-const PALETTE = ['#e8735a','#e8a23a','#6db56d','#5a9fd4','#a06db5','#d45a9f','#5ab5b5','#b5a05a'];
+// ══ PALETTE ══
+const PAL = ['#e8735a','#e8a23a','#6db56d','#5a9fd4','#a06db5','#d45a9f','#5ab5b5','#b5a05a'];
 
-// ── STATE ──
-let currentMapId = null, mapData = null;
-let selectedId = null, ctxId = null, noteId = null;
-let saveTimer = null, isDirty = false;
-let nodeEls = {}, nodeData = {}; // id -> element, id -> data object
+// ══ STATE ══
+let mapData=null, currentMapId=null;
+let selId=null, ctxId=null, noteId=null;
+let nodeEls={}, nodeMap={};
+let saveTimer=null, isDirty=false;
 
-// Canvas transform
-let cx = 0, cy = 0, cz = 1;
-let panning = false, px0 = 0, py0 = 0, pcx = 0, pcy = 0;
-// Node drag
-let dragging = false, dragId = null, dx0 = 0, dy0 = 0, dnx = 0, dny = 0;
+// Canvas
+let cx=0,cy=0,cz=1,panning=false,px0=0,py0=0,pcx=0,pcy=0;
+// Drag
+let dragId=null,dragging=false,dx0=0,dy0=0,dnx=0,dny=0;
 
-// ── UTILS ──
-function uid() { return 'n' + Math.random().toString(36).slice(2, 9); }
-function fmtDate(ts) {
-  const d = new Date(ts * 1000);
-  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+// ══ UTILS ══
+function uid(){ return 'n'+Math.random().toString(36).slice(2,9); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(ts){ const d=new Date(ts*1000); return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`; }
+function showOv(id){ document.getElementById(id).classList.add('on'); }
+function hideOv(id){ document.getElementById(id).classList.remove('on'); }
+function toast(msg,ms=2000){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),ms);
 }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function branchColor(branchIndex) { return PALETTE[branchIndex % PALETTE.length]; }
 
-// ── API ──
-const api = {
-  get: p => fetch(p).then(r => r.json()),
-  post: (p,b) => fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
-  put: (p,b) => fetch(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
-  del: p => fetch(p,{method:'DELETE'}).then(r=>r.json()),
+// ══ API ══
+const api={
+  get:p=>fetch(p).then(r=>{ if(r.status===401){showLogin();throw new Error('401');} return r.json(); }),
+  post:(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>{ if(r.status===401){showLogin();throw new Error('401');} return r.json(); }),
+  put:(p,b)=>fetch(p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()),
+  del:p=>fetch(p,{method:'DELETE'}).then(r=>r.json()),
 };
 
-// ── LIST ──
-async function loadList() {
-  const maps = await api.get('/api/maps');
-  const grid = document.getElementById('maps-grid');
-  if (!maps.length) {
-    grid.innerHTML = '<div class="empty-state">还没有导图，点击右上角新建一张</div>';
-    return;
-  }
-  grid.innerHTML = maps.map((m, i) => `
+// ══ LOGIN / AUTH ══
+async function checkAuth(){
+  const r = await fetch('/api/auth-check');
+  const d = await r.json();
+  if(d.ok){ showApp(); } else { showLogin(); }
+}
+
+function showLogin(){
+  document.getElementById('login-page').style.display='flex';
+  document.getElementById('app').style.display='none';
+}
+function showApp(){
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('app').style.display='flex';
+  loadList();
+}
+
+async function doLogin(){
+  const u=document.getElementById('lf-user').value.trim();
+  const p=document.getElementById('lf-pass').value;
+  const btn=document.getElementById('login-btn');
+  const err=document.getElementById('lf-err');
+  err.textContent=''; btn.disabled=true; btn.textContent='登录中...';
+  try{
+    const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d=await r.json();
+    if(r.ok){ showApp(); }
+    else { err.textContent=d.detail||'登录失败'; }
+  }catch(e){ err.textContent='网络错误，请重试'; }
+  btn.disabled=false; btn.textContent='登 录';
+}
+
+async function doLogout(){
+  await fetch('/api/logout',{method:'POST'});
+  showLogin();
+  document.getElementById('lf-pass').value='';
+  document.getElementById('lf-err').textContent='';
+}
+
+// ══ CHANGE PASSWORD ══
+function showChangePw(){ document.getElementById('pw-old').value=''; document.getElementById('pw-new').value=''; document.getElementById('pw-new2').value=''; document.getElementById('pw-err').textContent=''; showOv('ov-pw'); }
+async function confirmChangePw(){
+  const old=document.getElementById('pw-old').value;
+  const nw=document.getElementById('pw-new').value;
+  const nw2=document.getElementById('pw-new2').value;
+  const err=document.getElementById('pw-err');
+  if(nw!==nw2){ err.textContent='两次密码不一致'; return; }
+  if(nw.length<6){ err.textContent='新密码至少6位'; return; }
+  const r=await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old_password:old,new_password:nw})});
+  const d=await r.json();
+  if(r.ok){ hideOv('ov-pw'); toast('密码已修改'); }
+  else { err.textContent=d.detail||'修改失败'; }
+}
+
+// ══ LIST ══
+async function loadList(){
+  showListView();
+  const maps=await api.get('/api/maps');
+  const cards=document.getElementById('cards');
+  if(!maps.length){ cards.innerHTML='<div class="empty">还没有导图，点击右上角新建一张</div>'; return; }
+  cards.innerHTML=maps.map((m,i)=>`
     <div class="map-card" onclick="openMap(${m.id})">
-      <div class="map-card-dot" style="background:${PALETTE[i % PALETTE.length]}"></div>
-      <div class="map-card-title">${esc(m.title)}</div>
-      <div class="map-card-meta">${fmtDate(m.updated_at)}</div>
-      <button class="map-card-del" onclick="event.stopPropagation();delMap(${m.id},this.closest('.map-card'))">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 5.5v4M8 5.5v4M2.5 3.5l.8 7h6.4l.8-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="card-dot" style="background:${PAL[i%PAL.length]}"></div>
+      <div class="card-title">${esc(m.title)}</div>
+      <div class="card-meta">${fmtDate(m.updated_at)}</div>
+      <button class="card-del" onclick="event.stopPropagation();delMap(${m.id},this.closest('.map-card'))">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M4.5 3.5V2.5h4v1M5 5.5v4M8 5.5v4M2.5 3.5l.8 7h6.4l.8-7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>`).join('');
 }
 
-async function delMap(id, card) {
-  if (!confirm('确定删除这张导图？')) return;
+async function delMap(id,card){
+  if(!confirm('确定删除这张导图？')) return;
   await api.del(`/api/maps/${id}`);
   card.remove();
-  if (!document.querySelector('.map-card'))
-    document.getElementById('maps-grid').innerHTML = '<div class="empty-state">还没有导图，点击右上角新建一张</div>';
+  if(!document.querySelector('.map-card')) document.getElementById('cards').innerHTML='<div class="empty">还没有导图，点击右上角新建一张</div>';
 }
 
-// ── NEW MAP MODAL ──
-function showNewModal() {
-  document.getElementById('new-title-input').value = '';
-  document.getElementById('overlay-new').classList.add('on');
-  setTimeout(() => document.getElementById('new-title-input').focus(), 60);
-}
-function hideNewModal() { document.getElementById('overlay-new').classList.remove('on'); }
-async function confirmNew() {
-  const t = document.getElementById('new-title-input').value.trim() || '未命名导图';
-  hideNewModal();
-  const m = await api.post('/api/maps', { title: t });
+// ══ NEW MAP ══
+function showNewModal(){ document.getElementById('new-title').value=''; showOv('ov-new'); setTimeout(()=>document.getElementById('new-title').focus(),60); }
+async function confirmNew(){
+  const t=document.getElementById('new-title').value.trim()||'未命名导图';
+  hideOv('ov-new');
+  const m=await api.post('/api/maps',{title:t});
   openMap(m.id);
 }
-document.getElementById('new-title-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') confirmNew();
-  if (e.key === 'Escape') hideNewModal();
-});
-document.getElementById('overlay-new').addEventListener('click', e => {
-  if (e.target === document.getElementById('overlay-new')) hideNewModal();
-});
+document.getElementById('new-title').addEventListener('keydown',e=>{ if(e.key==='Enter') confirmNew(); if(e.key==='Escape') hideOv('ov-new'); });
+document.getElementById('ov-new').addEventListener('click',e=>{ if(e.target===document.getElementById('ov-new')) hideOv('ov-new'); });
 
-// ── OPEN MAP ──
-async function openMap(id) {
-  currentMapId = id;
-  const m = await api.get(`/api/maps/${id}`);
-  mapData = typeof m.data === 'string' ? JSON.parse(m.data) : m.data;
-  if (!mapData || !mapData.id) {
-    mapData = { id: uid(), text: m.title, x: 0, y: 0, children: [], note: '' };
-  }
-  document.getElementById('map-title-input').value = m.title;
-  document.getElementById('list-view').style.display = 'none';
-  document.getElementById('editor-view').style.display = 'flex';
-  setSaved(true);
-
-  // Center
-  const wrap = document.getElementById('canvas-wrap');
-  cz = 1; cx = wrap.clientWidth / 2; cy = wrap.clientHeight / 2;
-  applyTransform();
-  // Auto-layout if nodes lack position (new map or legacy data)
-  const hasPos = mapData.x !== undefined && mapData.x !== 0;
-  if (!hasPos) {
-    autoLayout(false);
-  } else {
-    renderAll();
-  }
+// ══ VIEW SWITCHING ══
+function showListView(){
+  document.getElementById('list-view').style.display='flex';
+  document.getElementById('editor-view').style.display='none';
+  document.getElementById('nav-list-mode').style.display='flex';
+  document.getElementById('nav-editor-mode').style.display='none';
+}
+function showEditorView(){
+  document.getElementById('list-view').style.display='none';
+  document.getElementById('editor-view').style.display='block';
+  document.getElementById('nav-list-mode').style.display='none';
+  document.getElementById('nav-editor-mode').style.display='flex';
 }
 
-function backToList() {
-  if (isDirty) saveNow();
-  document.getElementById('editor-view').style.display = 'none';
-  document.getElementById('list-view').style.display = 'flex';
-  currentMapId = null; mapData = null; selectedId = null; nodeEls = {}; nodeData = {}; isDirty = false;
+// ══ OPEN / BACK ══
+async function openMap(id){
+  currentMapId=id;
+  const m=await api.get(`/api/maps/${id}`);
+  mapData=typeof m.data==='string'?JSON.parse(m.data):m.data;
+  if(!mapData||!mapData.id) mapData={id:uid(),text:m.title,x:0,y:0,children:[],note:''};
+  document.getElementById('map-title-input').value=m.title;
+  setSaved(true);
+  showEditorView();
+  const wrap=document.getElementById('canvas-wrap');
+  cz=1; cx=wrap.clientWidth/2; cy=wrap.clientHeight/2;
+  applyT();
+  autoLayout(false);
+}
+
+function backToList(){
+  if(isDirty) saveNow();
+  mapData=null; currentMapId=null; selId=null; nodeEls={}; nodeMap={}; isDirty=false;
   loadList();
 }
 
-function onTitleChange() { markDirty(); }
+// ══ AUTO LAYOUT ══
+const GX=190, GY=54; // horizontal gap, vertical gap per leaf
 
-// ── RENDER ──
-// Assign branch colors: each direct child of root gets a color
-function assignColors(node, color, depth) {
-  node._color = color;
-  node._depth = depth;
-  if (node.children) {
-    node.children.forEach((c, i) => {
-      const col = depth === 0 ? PALETTE[i % PALETTE.length] : color;
-      assignColors(c, col, depth + 1);
-    });
-  }
+function leafCount(node){
+  if(!node.children||!node.children.length) return 1;
+  return node.children.reduce((s,c)=>s+leafCount(c),0);
 }
 
-function renderAll() {
-  const canvas = document.getElementById('canvas');
-  canvas.querySelectorAll('.node').forEach(e => e.remove());
-  nodeEls = {}; nodeData = {};
-  document.getElementById('connections').innerHTML = '';
-  if (!mapData) return;
-  assignColors(mapData, PALETTE[0], 0);
-  flattenTree(mapData, nodeData);
-  renderNode(mapData);
-  drawAllLines(mapData);
-}
-
-function flattenTree(node, map) {
-  map[node.id] = node;
-  if (node.children) node.children.forEach(c => flattenTree(c, map));
-}
-
-function renderNode(node) {
-  const el = document.createElement('div');
-  el.className = 'node';
-  el.dataset.id = node.id;
-  el.style.left = (node.x || 0) + 'px';
-  el.style.top = (node.y || 0) + 'px';
-
-  const color = node._color || PALETTE[0];
-  const isRoot = node._depth === 0;
-
-  if (isRoot) {
-    // Coggle-style arrow label
-    const box = document.createElement('div');
-    box.className = 'node-root-box';
-    box.textContent = node.text || '主题';
-    el.appendChild(box);
-  } else {
-    // Plain colored text
-    const lbl = document.createElement('div');
-    lbl.className = 'node-label';
-    lbl.style.color = color;
-    lbl.style.borderBottom = `2px solid ${color}`;
-    lbl.style.paddingBottom = '1px';
-    lbl.textContent = node.text || '节点';
-    el.appendChild(lbl);
-  }
-
-  // Note dot & tooltip
-  if (node.note) {
-    const dot = document.createElement('div'); dot.className = 'note-dot'; el.appendChild(dot);
-    const tip = document.createElement('div'); tip.className = 'note-tip'; tip.textContent = node.note; el.appendChild(tip);
-  }
-
-  // Add child button
-  if (!isRoot) {
-    const addBtn = document.createElement('div');
-    addBtn.className = 'node-add-btn';
-    addBtn.style.color = color;
-    addBtn.textContent = '+';
-    addBtn.addEventListener('click', e => { e.stopPropagation(); addChild(node.id); });
-    el.appendChild(addBtn);
-  }
-
-  // Events
-  el.addEventListener('mousedown', e => onNodeMD(e, node.id));
-  el.addEventListener('click', e => { e.stopPropagation(); selectNode(node.id); });
-  el.addEventListener('dblclick', e => { e.stopPropagation(); startEdit(node.id); });
-  el.addEventListener('contextmenu', e => { e.preventDefault(); e.stopPropagation(); showCtx(e, node.id); });
-
-  document.getElementById('canvas').appendChild(el);
-  nodeEls[node.id] = el;
-
-  if (node.children) node.children.forEach(c => renderNode(c));
-}
-
-// ── CONNECTIONS ── Coggle uses smooth curved lines from parent center to child
-function drawAllLines(node) {
-  if (!node.children) return;
-  node.children.forEach(c => {
-    drawLine(node, c);
-    drawAllLines(c);
+function layout(node, x, topY){
+  const lc=leafCount(node);
+  node.x=x;
+  node.y=topY+(lc*GY)/2;
+  if(!node.children||!node.children.length) return;
+  let curY=topY;
+  node.children.forEach(c=>{
+    const cl=leafCount(c);
+    layout(c, x+GX, curY);
+    curY+=cl*GY;
   });
 }
 
-function drawLine(parent, child) {
-  const svg = document.getElementById('connections');
-  const pEl = nodeEls[parent.id], cEl = nodeEls[child.id];
-  if (!pEl || !cEl) return;
-
-  const color = child._color || PALETTE[0];
-  const pw = pEl.offsetWidth, ph = pEl.offsetHeight;
-  const cw = cEl.offsetWidth, ch = cEl.offsetHeight;
-
-  // From right-center of parent to left-center of child (or adjust based on position)
-  const px1 = parent.x + pw / 2, py1 = parent.y;
-  const cx1 = child.x + cw / 2, cy1 = child.y;
-
-  // Coggle-style: thick curved line, tapering
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  const mx = (px1 + cx1) / 2;
-
-  // Control points for S-curve like Coggle
-  const d = `M ${px1} ${py1} C ${mx} ${py1}, ${mx} ${cy1}, ${cx1} ${cy1}`;
-  path.setAttribute('d', d);
-  path.setAttribute('stroke', color);
-
-  // Thicker near root, thinner for deep nodes
-  const depth = child._depth || 1;
-  const sw = Math.max(1.5, 4 - depth * 0.8);
-  path.setAttribute('stroke-width', sw);
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke-linecap', 'round');
-  path.setAttribute('opacity', '0.85');
-  svg.appendChild(path);
-}
-
-// ── SELECTION ──
-function selectNode(id) {
-  document.querySelectorAll('.node').forEach(n => n.style.outline = 'none');
-  selectedId = id;
-  if (id && nodeEls[id]) {
-    nodeEls[id].style.outline = '2px dashed ' + (nodeData[id]?._color || '#aaa');
-    nodeEls[id].style.outlineOffset = '3px';
-    nodeEls[id].style.borderRadius = '4px';
-  }
-}
-
-// ── EDIT ──
-function startEdit(id) {
-  const node = nodeData[id]; if (!node) return;
-  const el = nodeEls[id];
-  const lbl = el.querySelector('.node-root-box, .node-label');
-  lbl.contentEditable = 'true'; lbl.focus();
-  const r = document.createRange(); r.selectNodeContents(lbl);
-  window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
-  const finish = () => {
-    lbl.contentEditable = 'false';
-    node.text = lbl.textContent.trim() || '节点';
-    lbl.textContent = node.text;
-    markDirty();
-    lbl.removeEventListener('blur', finish); lbl.removeEventListener('keydown', onKey);
-  };
-  const onKey = e => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); lbl.blur(); }
-    if (e.key === 'Escape') { lbl.textContent = node.text; lbl.blur(); }
-  };
-  lbl.addEventListener('blur', finish); lbl.addEventListener('keydown', onKey);
-}
-
-// ── AUTO LAYOUT ──
-const NODE_GAP_Y = 52;
-const NODE_GAP_X = 180;
-
-function subtreeHeight(node) {
-  if (!node.children || node.children.length === 0) return 1;
-  return node.children.reduce((sum, c) => sum + subtreeHeight(c), 0);
-}
-
-function layoutSubtree(node, x, topY) {
-  const h = subtreeHeight(node);
-  const centerY = topY + (h * NODE_GAP_Y) / 2;
-  node.x = x;
-  node.y = centerY;
-  if (!node.children || node.children.length === 0) return;
-  let curY = topY;
-  node.children.forEach(c => {
-    const ch = subtreeHeight(c);
-    layoutSubtree(c, x + NODE_GAP_X, curY);
-    curY += ch * NODE_GAP_Y;
-  });
-}
-
-function autoLayout(andSave) {
-  if (!mapData) return;
-  const totalH = subtreeHeight(mapData);
-  layoutSubtree(mapData, -NODE_GAP_X * 0.5, -(totalH * NODE_GAP_Y) / 2);
-  if (andSave) markDirty();
+function autoLayout(andSave){
+  if(!mapData) return;
+  const total=leafCount(mapData);
+  layout(mapData, -GX*0.4, -(total*GY)/2);
+  if(andSave) markDirty();
   renderAll();
 }
 
-// ── ADD CHILD ──
-function addChild(parentId) {
-  const parent = nodeData[parentId]; if (!parent) return;
-  const siblings = parent.children ? parent.children.length : 0;
-  const child = {
-    id: uid(), text: '新节点',
-    x: parent.x + NODE_GAP_X,
-    y: parent.y + siblings * NODE_GAP_Y,
-    children: [], note: '',
+// ══ RENDER ══
+function assignMeta(node, color, depth){
+  node._col=color; node._dep=depth;
+  if(node.children) node.children.forEach((c,i)=>{
+    const col=depth===0?PAL[i%PAL.length]:color;
+    assignMeta(c,col,depth+1);
+  });
+}
+
+function flatTree(node, map){ map[node.id]=node; if(node.children) node.children.forEach(c=>flatTree(c,map)); }
+
+function renderAll(){
+  const canvas=document.getElementById('canvas');
+  canvas.querySelectorAll('.node').forEach(e=>e.remove());
+  nodeEls={}; nodeMap={};
+  document.getElementById('svg-lines').innerHTML='';
+  if(!mapData) return;
+  assignMeta(mapData,PAL[0],0);
+  flatTree(mapData,nodeMap);
+  renderNode(mapData);
+  // Draw lines after DOM updates so offsetWidth is available
+  requestAnimationFrame(()=>{ drawLines(mapData); });
+}
+
+function renderNode(node){
+  const el=document.createElement('div');
+  el.className='node'; el.dataset.id=node.id;
+  el.style.left=(node.x||0)+'px'; el.style.top=(node.y||0)+'px';
+  const col=node._col||PAL[0], isRoot=node._dep===0;
+
+  if(isRoot){
+    const b=document.createElement('div'); b.className='root-box'; b.textContent=node.text||'主题'; el.appendChild(b);
+  } else {
+    const l=document.createElement('div'); l.className='node-label';
+    l.style.color=col; l.style.borderBottom=`2px solid ${col}`; l.style.paddingBottom='1px';
+    l.textContent=node.text||'节点'; el.appendChild(l);
+    // add-child button
+    const ab=document.createElement('div'); ab.className='node-add-btn'; ab.style.color=col; ab.textContent='+';
+    ab.addEventListener('click',e=>{e.stopPropagation();addChild(node.id);}); el.appendChild(ab);
+  }
+
+  if(node.note){
+    const d=document.createElement('div'); d.className='note-dot'; el.appendChild(d);
+    const t=document.createElement('div'); t.className='note-tip'; t.textContent=node.note; el.appendChild(t);
+  }
+
+  el.addEventListener('mousedown',e=>onNodeMD(e,node.id));
+  el.addEventListener('click',e=>{e.stopPropagation();selectNode(node.id);});
+  el.addEventListener('dblclick',e=>{e.stopPropagation();startEdit(node.id);});
+  el.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();showCtx(e,node.id);});
+
+  document.getElementById('canvas').appendChild(el);
+  nodeEls[node.id]=el;
+  if(node.children) node.children.forEach(c=>renderNode(c));
+}
+
+function drawLines(node){
+  if(!node.children) return;
+  node.children.forEach(c=>{ drawLine(node,c); drawLines(c); });
+}
+
+function drawLine(par,child){
+  const svg=document.getElementById('svg-lines');
+  const pe=nodeEls[par.id], ce=nodeEls[child.id];
+  if(!pe||!ce) return;
+  const col=child._col||PAL[0];
+  const pw=pe.offsetWidth, cw=ce.offsetWidth;
+  // connect from right-center of parent to center of child
+  const p1x=par.x+pw/2, p1y=par.y;
+  const c1x=child.x+cw/2, c1y=child.y; // children are centered via transform
+  const mx=(p1x+c1x)/2;
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M ${p1x} ${p1y} C ${mx} ${p1y}, ${mx} ${c1y}, ${c1x} ${c1y}`);
+  path.setAttribute('stroke',col);
+  const sw=Math.max(1.5,4.5-(child._dep||1)*0.9);
+  path.setAttribute('stroke-width',sw);
+  path.setAttribute('fill','none'); path.setAttribute('stroke-linecap','round'); path.setAttribute('opacity','0.9');
+  svg.appendChild(path);
+}
+
+// ══ SELECT ══
+function selectNode(id){
+  document.querySelectorAll('.node').forEach(n=>{ n.style.outline='none'; });
+  selId=id;
+  if(id&&nodeEls[id]){
+    nodeEls[id].style.outline='2px dashed '+(nodeMap[id]?._col||'#aaa');
+    nodeEls[id].style.outlineOffset='3px'; nodeEls[id].style.borderRadius='4px';
+  }
+}
+
+// ══ EDIT ══
+function startEdit(id){
+  const node=nodeMap[id]; if(!node) return;
+  const el=nodeEls[id];
+  const lbl=el.querySelector('.root-box,.node-label');
+  lbl.contentEditable='true'; lbl.focus();
+  const r=document.createRange(); r.selectNodeContents(lbl);
+  window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+  const finish=()=>{
+    lbl.contentEditable='false';
+    node.text=lbl.textContent.trim()||'节点'; lbl.textContent=node.text;
+    markDirty(); lbl.removeEventListener('blur',finish); lbl.removeEventListener('keydown',onKey);
   };
-  if (!parent.children) parent.children = [];
+  const onKey=e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();lbl.blur();} if(e.key==='Escape'){lbl.textContent=node.text;lbl.blur();} };
+  lbl.addEventListener('blur',finish); lbl.addEventListener('keydown',onKey);
+}
+
+// ══ ADD CHILD ══
+function addChild(parentId){
+  const parent=nodeMap[parentId]; if(!parent) return;
+  const child={ id:uid(), text:'新节点', x:parent.x+GX, y:parent.y, children:[], note:'' };
+  if(!parent.children) parent.children=[];
   parent.children.push(child);
   autoLayout(true);
   selectNode(child.id);
-  setTimeout(() => startEdit(child.id), 60);
+  setTimeout(()=>startEdit(child.id),60);
 }
 
-// Right-click on root also adds
-document.getElementById('canvas-wrap').addEventListener('dblclick', e => {
-  if (!e.target.closest('.node') && mapData) addChild(mapData.id);
+// Double-click canvas to add child to root
+document.getElementById('canvas-wrap').addEventListener('dblclick',e=>{
+  if(!e.target.closest('.node')&&mapData) addChild(mapData.id);
 });
 
-// ── DELETE ──
-function delNode(id) {
-  if (id === mapData.id) { alert('根节点无法删除'); return; }
-  removeFromTree(mapData, id);
-  if (selectedId === id) selectedId = null;
-  markDirty(); renderAll();
+// ══ DELETE ══
+function delNode(id){
+  if(id===mapData.id){toast('根节点不能删除');return;}
+  rmFromTree(mapData,id);
+  if(selId===id) selId=null;
+  autoLayout(true);
 }
-function removeFromTree(node, id) {
-  if (!node.children) return false;
-  const i = node.children.findIndex(c => c.id === id);
-  if (i !== -1) { node.children.splice(i, 1); return true; }
-  return node.children.some(c => removeFromTree(c, id));
+function rmFromTree(node,id){
+  if(!node.children) return false;
+  const i=node.children.findIndex(c=>c.id===id);
+  if(i!==-1){node.children.splice(i,1);return true;}
+  return node.children.some(c=>rmFromTree(c,id));
 }
 
-// ── CONTEXT MENU ──
-function showCtx(e, id) {
-  ctxId = id; selectNode(id);
-  const menu = document.getElementById('ctx-menu');
-  let lx = e.clientX, ly = e.clientY;
-  if (lx + 180 > window.innerWidth) lx = window.innerWidth - 184;
-  if (ly + 180 > window.innerHeight) ly = window.innerHeight - 184;
-  menu.style.left = lx + 'px'; menu.style.top = ly + 'px';
-  menu.classList.add('on');
+// ══ CTX MENU ══
+function showCtx(e,id){
+  ctxId=id; selectNode(id);
+  const m=document.getElementById('ctx');
+  let lx=e.clientX,ly=e.clientY;
+  if(lx+170>window.innerWidth) lx=window.innerWidth-174;
+  if(ly+160>window.innerHeight) ly=window.innerHeight-164;
+  m.style.left=lx+'px'; m.style.top=ly+'px'; m.classList.add('on');
 }
-function hideCtx() { document.getElementById('ctx-menu').classList.remove('on'); ctxId = null; }
-function ctxAdd() { const id = ctxId; hideCtx(); addChild(id); }
-function ctxEdit() { const id = ctxId; hideCtx(); startEdit(id); }
-function ctxNote() { const id = ctxId; hideCtx(); showNoteModal(id); }
-function ctxDel() { const id = ctxId; hideCtx(); delNode(id); }
+function hideCtx(){ document.getElementById('ctx').classList.remove('on'); ctxId=null; }
+function ctxAdd(){ const id=ctxId; hideCtx(); addChild(id); }
+function ctxEdit(){ const id=ctxId; hideCtx(); startEdit(id); }
+function ctxNote(){ const id=ctxId; hideCtx(); showNoteModal(id); }
+function ctxDel(){ const id=ctxId; hideCtx(); delNode(id); }
 
-// ── NOTE MODAL ──
-function showNoteModal(id) {
-  noteId = id;
-  document.getElementById('note-input').value = nodeData[id]?.note || '';
-  updateNoteChar();
-  document.getElementById('overlay-note').classList.add('on');
-  setTimeout(() => document.getElementById('note-input').focus(), 60);
+// ══ NOTE ══
+function showNoteModal(id){
+  noteId=id;
+  document.getElementById('note-input').value=nodeMap[id]?.note||'';
+  updateNoteChar(); showOv('ov-note');
+  setTimeout(()=>document.getElementById('note-input').focus(),60);
 }
-function hideNoteModal() { document.getElementById('overlay-note').classList.remove('on'); noteId = null; }
-function updateNoteChar() { const v = document.getElementById('note-input').value; document.getElementById('note-char').textContent = v.length + ' / 500'; }
-function saveNote() {
-  if (!noteId) return;
-  nodeData[noteId].note = document.getElementById('note-input').value.trim();
-  hideNoteModal(); markDirty(); renderAll(); selectNode(noteId);
+function updateNoteChar(){ document.getElementById('note-char').textContent=document.getElementById('note-input').value.length+' / 500'; }
+function saveNote(){
+  if(!noteId) return;
+  nodeMap[noteId].note=document.getElementById('note-input').value.trim();
+  hideOv('ov-note'); markDirty(); renderAll(); selectNode(noteId);
 }
-function clearNote() {
-  if (!noteId) return;
-  nodeData[noteId].note = '';
-  hideNoteModal(); markDirty(); renderAll();
+function clearNote(){
+  if(!noteId) return;
+  nodeMap[noteId].note=''; hideOv('ov-note'); markDirty(); renderAll();
 }
-document.getElementById('overlay-note').addEventListener('click', e => { if (e.target === document.getElementById('overlay-note')) hideNoteModal(); });
-document.getElementById('note-input').addEventListener('keydown', e => { if (e.key === 'Escape') hideNoteModal(); });
+document.getElementById('ov-note').addEventListener('click',e=>{ if(e.target===document.getElementById('ov-note')) hideOv('ov-note'); });
+document.getElementById('note-input').addEventListener('keydown',e=>{ if(e.key==='Escape') hideOv('ov-note'); });
 
-// ── NODE DRAG ──
-function onNodeMD(e, id) {
-  if (e.button !== 0 || e.target.closest('[contenteditable="true"]') || e.target.classList.contains('node-add-btn')) return;
-  const node = nodeData[id]; if (!node) return;
-  dragging = false; dragId = id;
-  dx0 = e.clientX; dy0 = e.clientY;
-  dnx = node.x; dny = node.y;
-  const onMove = e2 => {
-    const ddx = (e2.clientX - dx0) / cz, ddy = (e2.clientY - dy0) / cz;
-    if (Math.abs(ddx) > 3 || Math.abs(ddy) > 3) dragging = true;
-    if (dragging) {
-      node.x = dnx + ddx; node.y = dny + ddy;
-      nodeEls[id].style.left = node.x + 'px';
-      nodeEls[id].style.top = node.y + 'px';
-      document.getElementById('connections').innerHTML = '';
-      drawAllLines(mapData);
+// ══ NODE DRAG ══
+function onNodeMD(e,id){
+  if(e.button!==0||e.target.closest('[contenteditable="true"]')||e.target.classList.contains('node-add-btn')) return;
+  const node=nodeMap[id]; if(!node) return;
+  dragging=false; dragId=id; dx0=e.clientX; dy0=e.clientY; dnx=node.x; dny=node.y;
+  const onMove=e2=>{
+    const ddx=(e2.clientX-dx0)/cz, ddy=(e2.clientY-dy0)/cz;
+    if(Math.abs(ddx)>3||Math.abs(ddy)>3) dragging=true;
+    if(dragging){
+      node.x=dnx+ddx; node.y=dny+ddy;
+      nodeEls[id].style.left=node.x+'px'; nodeEls[id].style.top=node.y+'px';
+      document.getElementById('svg-lines').innerHTML='';
+      requestAnimationFrame(()=>drawLines(mapData));
     }
   };
-  const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    if (dragging) { markDirty(); dragging = false; }
-    dragId = null;
-  };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-  e.stopPropagation();
+  const onUp=()=>{ document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); if(dragging){markDirty();dragging=false;} dragId=null; };
+  document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp); e.stopPropagation();
 }
 
-// ── CANVAS PAN / ZOOM ──
-const wrap = document.getElementById('canvas-wrap');
-wrap.addEventListener('mousedown', e => {
-  if (e.button !== 0 || e.target.closest('.node')) return;
-  panning = true; px0 = e.clientX; py0 = e.clientY; pcx = cx; pcy = cy;
-  wrap.style.cursor = 'grabbing';
-});
-document.addEventListener('mousemove', e => {
-  if (!panning) return;
-  cx = pcx + (e.clientX - px0); cy = pcy + (e.clientY - py0); applyTransform();
-});
-document.addEventListener('mouseup', () => { if (panning) { panning = false; wrap.style.cursor = 'default'; } });
-wrap.addEventListener('wheel', e => {
+// ══ CANVAS PAN / ZOOM ══
+const cwrap=document.getElementById('canvas-wrap');
+cwrap.addEventListener('mousedown',e=>{ if(e.button!==0||e.target.closest('.node')) return; panning=true; px0=e.clientX;py0=e.clientY;pcx=cx;pcy=cy; cwrap.style.cursor='grabbing'; });
+document.addEventListener('mousemove',e=>{ if(!panning) return; cx=pcx+(e.clientX-px0); cy=pcy+(e.clientY-py0); applyT(); });
+document.addEventListener('mouseup',()=>{ if(panning){panning=false;cwrap.style.cursor='default';} });
+cwrap.addEventListener('wheel',e=>{
   e.preventDefault();
-  const delta = e.deltaY > 0 ? 0.92 : 1.08;
-  const nz = Math.min(4, Math.max(0.15, cz * delta));
-  const rect = wrap.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  cx = mx - (mx - cx) * (nz / cz); cy = my - (my - cy) * (nz / cz);
-  cz = nz; applyTransform();
-}, { passive: false });
+  const delta=e.deltaY>0?0.92:1.08, nz=Math.min(4,Math.max(0.15,cz*delta));
+  const rect=cwrap.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  cx=mx-(mx-cx)*(nz/cz); cy=my-(my-cy)*(nz/cz); cz=nz; applyT();
+},{passive:false});
+function applyT(){ document.getElementById('canvas').style.transform=`translate(${cx}px,${cy}px) scale(${cz})`; }
 
-function applyTransform() {
-  document.getElementById('canvas').style.transform = `translate(${cx}px,${cy}px) scale(${cz})`;
-}
-
-// ── GLOBAL EVENTS ──
-document.addEventListener('click', e => {
-  if (!e.target.closest('#ctx-menu')) hideCtx();
-  if (!e.target.closest('.node') && !e.target.closest('#ctx-menu')) selectNode(null);
-});
-document.addEventListener('contextmenu', e => { if (!e.target.closest('.node')) { hideCtx(); e.preventDefault(); } });
-document.addEventListener('keydown', e => {
-  if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
-  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) { e.preventDefault(); delNode(selectedId); }
-  if (e.key === 'Tab') { e.preventDefault(); if (selectedId) addChild(selectedId); }
-  if (e.key === 'F2' && selectedId) startEdit(selectedId);
-  if ((e.key === 'n' || e.key === 'N') && selectedId) showNoteModal(selectedId);
-  if (e.key === 'Enter' && selectedId && nodeData[selectedId]?._depth === 0) addChild(selectedId);
+// ══ GLOBAL EVENTS ══
+document.addEventListener('click',e=>{ if(!e.target.closest('#ctx')) hideCtx(); if(!e.target.closest('.node')&&!e.target.closest('#ctx')) selectNode(null); });
+document.addEventListener('contextmenu',e=>{ if(!e.target.closest('.node')){hideCtx();e.preventDefault();} });
+document.addEventListener('keydown',e=>{
+  if(e.target.closest('input,textarea,[contenteditable="true"]')) return;
+  if((e.key==='Delete'||e.key==='Backspace')&&selId){e.preventDefault();delNode(selId);}
+  if(e.key==='Tab'){e.preventDefault();if(selId)addChild(selId);}
+  if(e.key==='F2'&&selId) startEdit(selId);
+  if((e.key==='n'||e.key==='N')&&selId) showNoteModal(selId);
 });
 
-// ── EXPORT ──
-function showExp(msg) { document.getElementById('exp-msg').textContent = msg; document.getElementById('exp-overlay').classList.add('on'); }
-function hideExp() { document.getElementById('exp-overlay').classList.remove('on'); }
+// Login shortcuts
+document.getElementById('lf-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('lf-user').addEventListener('keydown',e=>{ if(e.key==='Enter') document.getElementById('lf-pass').focus(); });
 
-async function captureMap() {
-  const canvas = document.getElementById('canvas');
-  const orig = canvas.style.transform;
-  canvas.style.transform = 'translate(0px,0px) scale(1)';
-  await new Promise(r => setTimeout(r, 100));
-  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-  document.querySelectorAll('.node').forEach(el => {
-    const x = parseFloat(el.style.left), y = parseFloat(el.style.top);
-    const w = el.offsetWidth, h = el.offsetHeight;
-    minX = Math.min(minX, x - w/2 - 8); minY = Math.min(minY, y - h/2 - 8);
-    maxX = Math.max(maxX, x + w/2 + 8); maxY = Math.max(maxY, y + h/2 + 8);
+// ══ EXPORT ══
+function showExp(m){ document.getElementById('exp-msg').textContent=m; document.getElementById('exp-ov').classList.add('on'); }
+function hideExp(){ document.getElementById('exp-ov').classList.remove('on'); }
+
+async function captureMap(){
+  const canvas=document.getElementById('canvas');
+  const orig=canvas.style.transform;
+  canvas.style.transform='translate(0px,0px) scale(1)';
+  await new Promise(r=>setTimeout(r,120));
+  let mnX=1e9,mnY=1e9,mxX=-1e9,mxY=-1e9;
+  document.querySelectorAll('.node').forEach(el=>{
+    const x=parseFloat(el.style.left),y=parseFloat(el.style.top),w=el.offsetWidth,h=el.offsetHeight;
+    mnX=Math.min(mnX,x-w/2-8); mnY=Math.min(mnY,y-h/2-8);
+    mxX=Math.max(mxX,x+w/2+8); mxY=Math.max(mxY,y+h/2+8);
   });
-  const pad = 60;
-  minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-  const img = await html2canvas(canvas, {
-    backgroundColor:'#f5f5f0', scale:2,
-    x:minX, y:minY, width:maxX-minX, height:maxY-minY,
-    useCORS:true, logging:false,
-    ignoreElements: el => el.classList.contains('node-add-btn') || el.classList.contains('note-tip'),
+  const pad=60; mnX-=pad; mnY-=pad; mxX+=pad; mxY+=pad;
+  const img=await html2canvas(canvas,{
+    backgroundColor:'#f5f5f0',scale:2,x:mnX,y:mnY,width:mxX-mnX,height:mxY-mnY,
+    useCORS:true,logging:false,
+    ignoreElements:el=>el.classList.contains('node-add-btn')||el.classList.contains('note-tip'),
   });
-  canvas.style.transform = orig;
-  return { img, W: maxX - minX, H: maxY - minY };
+  canvas.style.transform=orig;
+  return {img,W:mxX-mnX,H:mxY-mnY};
 }
 
-async function exportPNG() {
+async function exportPNG(){
   showExp('正在生成 PNG...');
-  await new Promise(r => setTimeout(r, 50));
-  try {
-    const { img } = await captureMap();
-    const title = (document.getElementById('map-title-input').value || 'mindtree').replace(/[\/\\:*?"<>|]/g,'_');
-    const a = document.createElement('a'); a.href = img.toDataURL('image/png'); a.download = title + '.png'; a.click();
-  } catch(err) { alert('导出失败：' + err.message); }
-  hideExp();
+  try{ const{img}=await captureMap(); const title=(document.getElementById('map-title-input').value||'mindtree').replace(/[\/\\:*?"<>|]/g,'_'); const a=document.createElement('a');a.href=img.toDataURL('image/png');a.download=title+'.png';a.click(); }
+  catch(e){alert('导出失败：'+e.message);} hideExp();
 }
-
-async function exportPDF() {
+async function exportPDF(){
   showExp('正在生成 PDF...');
-  await new Promise(r => setTimeout(r, 50));
-  try {
-    const { img, W, H } = await captureMap();
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation: W > H ? 'landscape' : 'portrait', unit:'px', format:[W,H] });
-    pdf.addImage(img.toDataURL('image/png'), 'PNG', 0, 0, W, H);
-    const title = (document.getElementById('map-title-input').value || 'mindtree').replace(/[\/\\:*?"<>|]/g,'_');
-    pdf.save(title + '.pdf');
-  } catch(err) { alert('导出失败：' + err.message); }
-  hideExp();
+  try{
+    const{img,W,H}=await captureMap();
+    const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:W>H?'landscape':'portrait',unit:'px',format:[W,H]});
+    pdf.addImage(img.toDataURL('image/png'),'PNG',0,0,W,H);
+    const title=(document.getElementById('map-title-input').value||'mindtree').replace(/[\/\\:*?"<>|]/g,'_');
+    pdf.save(title+'.pdf');
+  } catch(e){alert('导出失败：'+e.message);} hideExp();
 }
 
-// ── SAVE ──
-function markDirty() {
-  isDirty = true; setSaved(false);
-  clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 1200);
-}
-async function saveNow() {
-  if (!currentMapId || !mapData) return; isDirty = false;
-  const title = document.getElementById('map-title-input').value.trim() || '未命名导图';
-  mapData.text = title;
-  await api.put(`/api/maps/${currentMapId}`, { title, data: JSON.stringify(mapData) });
+// ══ SAVE ══
+function markDirty(){ isDirty=true;setSaved(false);clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,1200); }
+async function saveNow(){
+  if(!currentMapId||!mapData) return; isDirty=false;
+  const title=document.getElementById('map-title-input').value.trim()||'未命名导图';
+  mapData.text=title;
+  await api.put(`/api/maps/${currentMapId}`,{title,data:JSON.stringify(mapData)});
   setSaved(true);
 }
-function setSaved(ok) {
-  const dot = document.getElementById('save-dot');
-  dot.className = 'save-dot ' + (ok ? 'saved' : 'unsaved');
-  dot.title = ok ? '已保存' : '未保存';
+function setSaved(ok){
+  const d=document.getElementById('save-dot');
+  d.className='save-dot '+(ok?'ok':'dirty');
+  d.title=ok?'已保存':'未保存';
 }
 
-// ── INIT ──
-loadList();
+// ══ INIT ══
+checkAuth();
 </script>
 </body>
 </html>
