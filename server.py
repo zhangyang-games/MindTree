@@ -1,218 +1,179 @@
-from fastapi import FastAPI, HTTPException, Request, Response, Cookie
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Response, Cookie, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from typing import Optional
-import sqlite3
-import json
-import os
-import time
-import hashlib
-import secrets
+import sqlite3, json, os, time, hashlib, secrets, shutil
 
 app = FastAPI()
 
-# ── PATHS ──
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH  = os.path.join(BASE_DIR, "mindtree.db")
-CFG_PATH = os.path.join(BASE_DIR, "config.json")
+BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
+DB_PATH     = os.path.join(BASE_DIR, "mindtree.db")
+CFG_PATH    = os.path.join(BASE_DIR, "config.json")
+UPLOAD_DIR  = os.path.join(BASE_DIR, "uploads")
+SESSION_FILE= os.path.join(BASE_DIR, ".sessions")
 
-# ── CONFIG (username / password) ──
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# ── CONFIG ──
 def load_config():
     if os.path.exists(CFG_PATH):
-        with open(CFG_PATH) as f:
-            return json.load(f)
-    # Default first-run credentials — user should change via /api/change-password
+        with open(CFG_PATH) as f: return json.load(f)
     cfg = {"username": "admin", "password_hash": _hash("mindtree123")}
-    with open(CFG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    with open(CFG_PATH, "w") as f: json.dump(cfg, f, indent=2)
     return cfg
 
 def save_config(cfg):
-    with open(CFG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    with open(CFG_PATH, "w") as f: json.dump(cfg, f, indent=2)
 
-def _hash(pw: str) -> str:
-    return hashlib.sha256(pw.encode()).hexdigest()
+def _hash(pw): return hashlib.sha256(pw.encode()).hexdigest()
 
-# ── SESSION STORE (in-memory, survives restart via token file) ──
-SESSIONS: set[str] = set()
-SESSION_FILE = os.path.join(BASE_DIR, ".sessions")
+# ── SESSIONS ──
+SESSIONS: set = set()
 
 def load_sessions():
     if os.path.exists(SESSION_FILE):
-        with open(SESSION_FILE) as f:
-            for line in f:
-                t = line.strip()
-                if t:
-                    SESSIONS.add(t)
+        for line in open(SESSION_FILE): SESSIONS.add(line.strip()) if line.strip() else None
 
 def save_sessions():
-    with open(SESSION_FILE, "w") as f:
-        f.write("\n".join(SESSIONS))
+    open(SESSION_FILE,"w").write("\n".join(SESSIONS))
 
 load_sessions()
 
-def is_authenticated(token: Optional[str]) -> bool:
-    return token is not None and token in SESSIONS
-
-def auth_required(token: Optional[str] = None):
-    if not is_authenticated(token):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+def is_auth(token): return token is not None and token in SESSIONS
+def require_auth(token):
+    if not is_auth(token): raise HTTPException(401, "Unauthorized")
 
 # ── DB ──
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    c = sqlite3.connect(DB_PATH); c.row_factory = sqlite3.Row; return c
 
 def init_db():
-    conn = get_db()
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS maps (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL DEFAULT '未命名导图',
-            data TEXT NOT NULL DEFAULT '{}',
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
-        )
-    """)
-    conn.commit()
-    conn.close()
+    c = get_db()
+    c.execute("""CREATE TABLE IF NOT EXISTS maps (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL DEFAULT '未命名导图',
+        data TEXT NOT NULL DEFAULT '{}',
+        created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)""")
+    c.commit(); c.close()
 
 init_db()
 cfg = load_config()
 
 # ── MODELS ──
-class LoginBody(BaseModel):
-    username: str
-    password: str
+class LoginBody(BaseModel): username: str; password: str
+class ChangePwBody(BaseModel): old_password: str; new_password: str
+class MapCreate(BaseModel): title: str = "未命名导图"
+class MapUpdate(BaseModel): title: Optional[str]=None; data: Optional[str]=None
 
-class ChangePasswordBody(BaseModel):
-    old_password: str
-    new_password: str
-
-class MapCreate(BaseModel):
-    title: str = "未命名导图"
-
-class MapUpdate(BaseModel):
-    title: Optional[str] = None
-    data: Optional[str] = None
-
-# ── AUTH ROUTES ──
+# ── AUTH ──
 @app.post("/api/login")
 def login(body: LoginBody, response: Response):
-    global cfg
-    cfg = load_config()
+    global cfg; cfg = load_config()
     if body.username != cfg["username"] or _hash(body.password) != cfg["password_hash"]:
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
+        raise HTTPException(401, "用户名或密码错误")
     token = secrets.token_hex(32)
-    SESSIONS.add(token)
-    save_sessions()
+    SESSIONS.add(token); save_sessions()
     response.set_cookie("mt_token", token, httponly=True, samesite="lax", max_age=30*24*3600)
     return {"ok": True}
 
 @app.post("/api/logout")
-def logout(response: Response, mt_token: Optional[str] = Cookie(default=None)):
-    if mt_token and mt_token in SESSIONS:
-        SESSIONS.discard(mt_token)
-        save_sessions()
-    response.delete_cookie("mt_token")
-    return {"ok": True}
+def logout(response: Response, mt_token: Optional[str]=Cookie(default=None)):
+    SESSIONS.discard(mt_token); save_sessions()
+    response.delete_cookie("mt_token"); return {"ok": True}
 
 @app.get("/api/auth-check")
-def auth_check(mt_token: Optional[str] = Cookie(default=None)):
-    return {"ok": is_authenticated(mt_token)}
+def auth_check(mt_token: Optional[str]=Cookie(default=None)):
+    return {"ok": is_auth(mt_token)}
 
 @app.post("/api/change-password")
-def change_password(body: ChangePasswordBody, mt_token: Optional[str] = Cookie(default=None)):
-    auth_required(mt_token)
-    global cfg
-    cfg = load_config()
-    if _hash(body.old_password) != cfg["password_hash"]:
-        raise HTTPException(status_code=400, detail="原密码错误")
-    if len(body.new_password) < 6:
-        raise HTTPException(status_code=400, detail="新密码至少6位")
-    cfg["password_hash"] = _hash(body.new_password)
-    save_config(cfg)
+def change_pw(body: ChangePwBody, mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token); global cfg; cfg = load_config()
+    if _hash(body.old_password) != cfg["password_hash"]: raise HTTPException(400, "原密码错误")
+    if len(body.new_password) < 6: raise HTTPException(400, "新密码至少6位")
+    cfg["password_hash"] = _hash(body.new_password); save_config(cfg)
     return {"ok": True}
 
-# ── MAIN PAGE ──
+# ── STATIC ──
 @app.get("/", response_class=HTMLResponse)
 def index():
-    with open(os.path.join(BASE_DIR, "index.html"), encoding="utf-8") as f:
-        return f.read()
+    with open(os.path.join(BASE_DIR,"index.html"), encoding="utf-8") as f: return f.read()
 
-# ── LOGO / FAVICON ──
 @app.get("/logo.png")
 def serve_logo():
-    from fastapi.responses import FileResponse
     p = os.path.join(BASE_DIR, "logo.png")
-    if os.path.exists(p):
-        return FileResponse(p, media_type="image/png")
-    raise HTTPException(status_code=404, detail="logo not found")
+    if os.path.exists(p): return FileResponse(p, media_type="image/png")
+    raise HTTPException(404)
 
 @app.get("/favicon.ico")
 def favicon():
-    from fastapi.responses import FileResponse
     p = os.path.join(BASE_DIR, "logo.png")
-    if os.path.exists(p):
-        return FileResponse(p, media_type="image/x-icon")
-    raise HTTPException(status_code=404)
+    if os.path.exists(p): return FileResponse(p, media_type="image/x-icon")
+    raise HTTPException(404)
 
-# ── MAP ROUTES (all protected) ──
+# ── IMAGE UPLOAD ──
+ALLOWED_EXT = {".jpg",".jpeg",".png",".gif",".webp"}
+MAX_SIZE = 10 * 1024 * 1024  # 10MB
+
+@app.post("/api/upload")
+async def upload_image(file: UploadFile = File(...), mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in ALLOWED_EXT: raise HTTPException(400, "只支持 JPG/PNG/GIF/WebP")
+    data = await file.read()
+    if len(data) > MAX_SIZE: raise HTTPException(400, "图片不能超过 10MB")
+    fname = secrets.token_hex(12) + ext
+    fpath = os.path.join(UPLOAD_DIR, fname)
+    with open(fpath, "wb") as f: f.write(data)
+    return {"url": f"/uploads/{fname}"}
+
+@app.get("/uploads/{filename}")
+def serve_upload(filename: str, mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
+    # sanitize
+    filename = os.path.basename(filename)
+    fpath = os.path.join(UPLOAD_DIR, filename)
+    if not os.path.exists(fpath): raise HTTPException(404)
+    return FileResponse(fpath)
+
+# ── MAPS ──
 @app.get("/api/maps")
-def list_maps(mt_token: Optional[str] = Cookie(default=None)):
-    auth_required(mt_token)
-    conn = get_db()
-    rows = conn.execute("SELECT id, title, created_at, updated_at FROM maps ORDER BY updated_at DESC").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+def list_maps(mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
+    c = get_db()
+    rows = c.execute("SELECT id,title,created_at,updated_at FROM maps ORDER BY updated_at DESC").fetchall()
+    c.close(); return [dict(r) for r in rows]
 
 @app.post("/api/maps")
-def create_map(body: MapCreate, mt_token: Optional[str] = Cookie(default=None)):
-    auth_required(mt_token)
+def create_map(body: MapCreate, mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
     now = int(time.time())
-    default_data = json.dumps({"id": "root", "text": body.title, "x": 0, "y": 0, "children": [], "note": ""})
-    conn = get_db()
-    cur = conn.execute("INSERT INTO maps (title, data, created_at, updated_at) VALUES (?,?,?,?)", (body.title, default_data, now, now))
-    conn.commit()
-    mid = cur.lastrowid
-    conn.close()
-    return {"id": mid, "title": body.title, "created_at": now, "updated_at": now}
+    data = json.dumps({"id":"root","text":body.title,"x":0,"y":0,"children":[],"note":"","html":""})
+    c = get_db(); cur = c.execute("INSERT INTO maps(title,data,created_at,updated_at) VALUES(?,?,?,?)",(body.title,data,now,now))
+    c.commit(); mid=cur.lastrowid; c.close()
+    return {"id":mid,"title":body.title,"created_at":now,"updated_at":now}
 
 @app.get("/api/maps/{map_id}")
-def get_map(map_id: int, mt_token: Optional[str] = Cookie(default=None)):
-    auth_required(mt_token)
-    conn = get_db()
-    row = conn.execute("SELECT * FROM maps WHERE id=?", (map_id,)).fetchone()
-    conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Not found")
+def get_map(map_id: int, mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
+    c = get_db(); row = c.execute("SELECT * FROM maps WHERE id=?",(map_id,)).fetchone(); c.close()
+    if not row: raise HTTPException(404)
     return dict(row)
 
 @app.put("/api/maps/{map_id}")
-def update_map(map_id: int, body: MapUpdate, mt_token: Optional[str] = Cookie(default=None)):
-    auth_required(mt_token)
-    conn = get_db()
-    row = conn.execute("SELECT * FROM maps WHERE id=?", (map_id,)).fetchone()
-    if not row:
-        conn.close()
-        raise HTTPException(status_code=404, detail="Not found")
-    now = int(time.time())
+def update_map(map_id: int, body: MapUpdate, mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
+    c = get_db(); row = c.execute("SELECT * FROM maps WHERE id=?",(map_id,)).fetchone()
+    if not row: c.close(); raise HTTPException(404)
+    now=int(time.time())
     title = body.title if body.title is not None else row["title"]
     data  = body.data  if body.data  is not None else row["data"]
-    conn.execute("UPDATE maps SET title=?,data=?,updated_at=? WHERE id=?", (title, data, now, map_id))
-    conn.commit()
-    conn.close()
-    return {"id": map_id, "title": title, "updated_at": now}
+    c.execute("UPDATE maps SET title=?,data=?,updated_at=? WHERE id=?",(title,data,now,map_id))
+    c.commit(); c.close(); return {"id":map_id,"title":title,"updated_at":now}
 
 @app.delete("/api/maps/{map_id}")
-def delete_map(map_id: int, mt_token: Optional[str] = Cookie(default=None)):
-    auth_required(mt_token)
-    conn = get_db()
-    conn.execute("DELETE FROM maps WHERE id=?", (map_id,))
-    conn.commit()
-    conn.close()
+def delete_map(map_id: int, mt_token: Optional[str]=Cookie(default=None)):
+    require_auth(mt_token)
+    c = get_db(); c.execute("DELETE FROM maps WHERE id=?",(map_id,)); c.commit(); c.close()
     return {"ok": True}
 
 if __name__ == "__main__":
