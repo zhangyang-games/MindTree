@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ─────────────────────────────────────────
-#  MindTree 一键安装脚本
+#  MindTree Docker 安装脚本
 #  项目地址: github.com/zhangyang-games/MindTree
 # ─────────────────────────────────────────
 
@@ -9,91 +9,112 @@ set -e
 
 REPO="https://raw.githubusercontent.com/zhangyang-games/MindTree/main"
 INSTALL_DIR="$HOME/mindtree"
-SERVICE_NAME="mindtree"
+DATA_DIR="$HOME/mindtree_data"
 PORT=8849
-PYTHON=$(command -v python3 || command -v python)
 
 echo ""
 echo "╔══════════════════════════════════════╗"
-echo "║        MindTree 安装程序             ║"
+echo "║     MindTree Docker 安装程序         ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 
-# ── 1. 创建目录 ──
-echo "▶ 创建安装目录 $INSTALL_DIR ..."
-mkdir -p "$INSTALL_DIR"
+# ── 1. 检查 Docker ──
+echo "▶ 检查 Docker..."
+if ! command -v docker &>/dev/null; then
+    echo "  Docker 未安装，正在安装..."
+    curl -fsSL https://get.docker.com | sh
+    echo "  ✓ Docker 安装完成"
+else
+    echo "  ✓ Docker 已可用 ($(docker --version | cut -d' ' -f3 | tr -d ','))"
+fi
 
-# ── 2. 下载文件 ──
+# ── 2. 创建目录 ──
+echo "▶ 创建目录..."
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$DATA_DIR"
+echo "  ✓ $INSTALL_DIR"
+echo "  ✓ $DATA_DIR (数据持久化)"
+
+# ── 3. 下载文件 ──
 echo "▶ 从 GitHub 下载文件..."
-curl -fsSL "$REPO/server.py"  -o "$INSTALL_DIR/server.py"
-curl -fsSL "$REPO/index.html" -o "$INSTALL_DIR/index.html"
+curl -fsSL "$REPO/server.py"    -o "$INSTALL_DIR/server.py"
+curl -fsSL "$REPO/index.html"   -o "$INSTALL_DIR/index.html"
+curl -fsSL "$REPO/Dockerfile"   -o "$INSTALL_DIR/Dockerfile"
 echo "  ✓ server.py"
 echo "  ✓ index.html"
+echo "  ✓ Dockerfile"
 
-# ── 3. 确保 pip 可用 ──
-echo "▶ 检查 pip 是否可用..."
-if ! $PYTHON -m pip --version &>/dev/null; then
-    echo "  pip 未安装，正在通过 apt 安装 python3-pip..."
-    apt-get update -qq
-    apt-get install -y python3-pip -qq
-    echo "  ✓ python3-pip 安装完成"
-else
-    echo "  ✓ pip 已可用"
-fi
+# ── 4. 写 docker-compose 片段（追加到现有或新建）──
+COMPOSE_FILE="$HOME/docker-compose.yml"
 
-# ── 4. 安装 Python 依赖 ──
-echo "▶ 安装 Python 依赖 (fastapi, uvicorn)..."
-if $PYTHON -m pip install fastapi uvicorn --quiet 2>/dev/null; then
-    echo "  ✓ 依赖安装完成"
-else
-    echo "  ✗ 依赖安装失败，请查看错误信息"
-    $PYTHON -m pip install fastapi uvicorn
-    exit 1
-fi
+echo "▶ 配置 docker-compose..."
 
-# ── 5. 检测当前用户和 Python 路径 ──
-CURRENT_USER=$(whoami)
-PYTHON_PATH=$(command -v python3 || command -v python)
+if [ -f "$COMPOSE_FILE" ]; then
+    # 检查是否已经有 mindtree 服务
+    if grep -q "mindtree:" "$COMPOSE_FILE"; then
+        echo "  ℹ mindtree 已在 docker-compose.yml 中，跳过追加"
+    else
+        # 追加到现有 docker-compose.yml
+        cat >> "$COMPOSE_FILE" <<EOF
 
-# ── 6. 创建 systemd 服务 ──
-echo "▶ 创建系统服务 $SERVICE_NAME ..."
-
-tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
-[Unit]
-Description=MindTree - 私人思维导图
-After=network.target
-
-[Service]
-User=${CURRENT_USER}
-WorkingDirectory=${INSTALL_DIR}
-ExecStart=${PYTHON_PATH} ${INSTALL_DIR}/server.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
+  mindtree:
+    build:
+      context: ./mindtree
+      dockerfile: Dockerfile
+    container_name: mindtree
+    restart: always
+    ports:
+      - "${PORT}:8849"
+    volumes:
+      - ${DATA_DIR}:/app/uploads
+      - ${DATA_DIR}:/app/data
+    environment:
+      - TZ=Asia/Shanghai
 EOF
-
-echo "  ✓ 服务文件已创建"
-
-# ── 7. 启动服务 ──
-echo "▶ 启动 MindTree 服务..."
-systemctl daemon-reload
-systemctl enable "$SERVICE_NAME" --quiet
-systemctl restart "$SERVICE_NAME"
-
-sleep 2
-
-# ── 8. 检查状态 ──
-if systemctl is-active --quiet "$SERVICE_NAME"; then
-    echo "  ✓ 服务运行正常"
+        echo "  ✓ 已追加到现有 $COMPOSE_FILE"
+    fi
 else
-    echo "  ✗ 服务启动失败，查看日志："
-    echo "    journalctl -u $SERVICE_NAME -n 30"
+    # 新建 docker-compose.yml
+    cat > "$COMPOSE_FILE" <<EOF
+version: '3.8'
+services:
+  mindtree:
+    build:
+      context: ./mindtree
+      dockerfile: Dockerfile
+    container_name: mindtree
+    restart: always
+    ports:
+      - "${PORT}:8849"
+    volumes:
+      - ${DATA_DIR}:/app/uploads
+      - ${DATA_DIR}:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+EOF
+        echo "  ✓ 新建 $COMPOSE_FILE"
+fi
+
+# ── 5. 构建并启动 ──
+echo "▶ 构建 Docker 镜像（首次约需 1-2 分钟）..."
+cd "$HOME"
+docker compose build mindtree
+echo "  ✓ 镜像构建完成"
+
+echo "▶ 启动容器..."
+docker compose up -d mindtree
+sleep 3
+
+# ── 6. 检查状态 ──
+if docker ps | grep -q mindtree; then
+    echo "  ✓ 容器运行正常"
+else
+    echo "  ✗ 容器启动失败，查看日志："
+    echo "    docker logs mindtree"
     exit 1
 fi
 
-# ── 9. 完成 ──
+# ── 7. 完成 ──
 LOCAL_IP=$(hostname -I | awk '{print $1}')
 echo ""
 echo "╔══════════════════════════════════════╗"
@@ -101,14 +122,15 @@ echo "║          安装成功 🎉                 ║"
 echo "╚══════════════════════════════════════╝"
 echo ""
 echo "  访问地址:  http://${LOCAL_IP}:${PORT}"
-echo "  安装目录:  ${INSTALL_DIR}"
-echo "  数据库:    ${INSTALL_DIR}/mindtree.db"
+echo "  默认账号:  admin"
+echo "  默认密码:  mindtree123"
+echo "  数据目录:  ${DATA_DIR}"
 echo ""
 echo "  常用命令:"
-echo "    查看状态   systemctl status $SERVICE_NAME"
-echo "    重启服务   systemctl restart $SERVICE_NAME"
-echo "    查看日志   journalctl -u $SERVICE_NAME -f"
-echo "    停止服务   systemctl stop $SERVICE_NAME"
+echo "    查看状态   docker ps | grep mindtree"
+echo "    查看日志   docker logs mindtree -f"
+echo "    重启容器   docker compose restart mindtree"
+echo "    停止容器   docker compose stop mindtree"
 echo ""
 echo "  更新到最新版本:"
 echo "    curl -fsSL $REPO/install.sh | bash"

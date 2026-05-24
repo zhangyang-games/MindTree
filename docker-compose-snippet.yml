@@ -1,0 +1,13 @@
+  mindtree:
+    build:
+      context: ./mindtree
+      dockerfile: Dockerfile
+    container_name: mindtree
+    restart: always
+    ports:
+      - "8849:8849"
+    volumes:
+      - ./mindtree_data:/app/uploads
+      - ./mindtree_data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
