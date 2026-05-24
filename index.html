@@ -234,7 +234,7 @@ textarea.mi{resize:vertical;min-height:90px;line-height:1.6}
 </div>
 
 <!-- FORMAT TOOLBAR -->
-<div id="fmt-bar">
+<div id="fmt-bar" onmousedown="event.preventDefault()">
   <button class="fmt-btn" id="fmt-b" onclick="fmtExec('bold')" title="加粗"><b>B</b></button>
   <button class="fmt-btn" id="fmt-i" onclick="fmtExec('italic')" title="斜体"><i>I</i></button>
   <button class="fmt-btn" id="fmt-u" onclick="fmtExec('underline')" title="下划线"><u>U</u></button>
@@ -424,7 +424,12 @@ async function openMap(id){
   setSaved(true);showEditorView();
   const wrap=document.getElementById('canvas-wrap');
   cz=1;cx=wrap.clientWidth/2;cy=wrap.clientHeight/2;applyT();
-  autoLayout(false);
+  // Only auto-layout if root has no saved position
+  if(!mapData.x && !mapData.y && (!mapData.children || mapData.children.length===0)){
+    autoLayout(false);
+  } else {
+    renderAll();
+  }
 }
 function backToList(){
   if(isDirty)saveNow();
@@ -475,13 +480,13 @@ function renderNode(n){
 
   if(isRoot){
     const b=document.createElement('div');b.className='root-box';
-    b.innerHTML=n.html||esc(n.text||'主题');el.appendChild(b);
+    b.innerHTML=n.html||(n.text?n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'主题');el.appendChild(b);
   } else {
     const l=document.createElement('div');l.className='node-label';
-    l.style.color=col;l.style.borderBottom=`2px solid ${col}`;
+    l.style.color=col;// no underline
     // white background so lines are hidden behind text — key fix!
     l.style.background='var(--bg)';
-    l.innerHTML=n.html||esc(n.text||'节点');
+    l.innerHTML=n.html||(n.text?n.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):'节点');
     el.appendChild(l);
     const ab=document.createElement('div');ab.className='node-add-btn';ab.style.color=col;ab.textContent='+';
     ab.addEventListener('click',e=>{e.stopPropagation();addChild(n.id)});el.appendChild(ab);
@@ -559,14 +564,16 @@ function positionFmtBar(el){
 function fmtExec(cmd){
   if(!fmtBarTarget)return;
   fmtBarTarget.focus();
-  document.execCommand(cmd,false,null);
-  updateFmtState();
+  setTimeout(()=>{
+    document.execCommand(cmd,false,null);
+    updateFmtState();
+  },10);
 }
 function fmtColor(val){
   document.getElementById('fmt-color-preview').style.background=val;
   if(!fmtBarTarget)return;
   fmtBarTarget.focus();
-  document.execCommand('foreColor',false,val);
+  setTimeout(()=>document.execCommand('foreColor',false,val),10);
 }
 function updateFmtState(){
   document.getElementById('fmt-b').classList.toggle('active',document.queryCommandState('bold'));
@@ -586,21 +593,24 @@ function startEdit(id){
   // Set innerHTML for rich editing
   if(node.html)lbl.innerHTML=node.html; else lbl.textContent=node.text||'';
   lbl.contentEditable='true';lbl.focus();
-  document.execCommand('selectAll',false,null);
+  // place cursor at end
+  const _range=document.createRange();_range.selectNodeContents(lbl);_range.collapse(false);const _sel=window.getSelection();_sel.removeAllRanges();_sel.addRange(_range);
   showFmtBar(lbl,id);
 
   const finish=()=>{
-    lbl.contentEditable='false';
-    node.html=lbl.innerHTML;
-    // plain text fallback
-    node.text=lbl.textContent.trim()||'节点';
-    if(node._dep===0&&node.text)document.getElementById('map-title-input').value=node.text;
-    markDirty();
-    hideFmtBar();
-    lbl.removeEventListener('blur',finish);lbl.removeEventListener('keydown',onKey);
-    // re-render connections (size may have changed)
-    document.getElementById('svg-lines').innerHTML='';
-    requestAnimationFrame(()=>drawLines(mapData));
+    // delay so fmt-bar clicks (mousedown) don't prematurely end edit
+    setTimeout(()=>{
+      if(document.activeElement===lbl) return; // still focused
+      lbl.contentEditable='false';
+      node.html=lbl.innerHTML;
+      node.text=lbl.textContent.trim()||'节点';
+      if(node._dep===0&&node.text)document.getElementById('map-title-input').value=node.text;
+      markDirty();
+      hideFmtBar();
+      lbl.removeEventListener('blur',finish);lbl.removeEventListener('keydown',onKey);
+      document.getElementById('svg-lines').innerHTML='';
+      requestAnimationFrame(()=>drawLines(mapData));
+    }, 150);
   };
   const onKey=e=>{
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();lbl.blur()}
@@ -679,9 +689,10 @@ async function confirmUpload(){
   btn.disabled=false;btn.textContent='插入';
 }
 function ctxDelImg(){
-  if(!ctxId)return;hideCtx();
-  if(nodeMap[ctxId])nodeMap[ctxId].img='';
-  markDirty();renderAll();toast('图片已移除');
+  const id=ctxId;hideCtx();
+  if(!id||!nodeMap[id])return;
+  nodeMap[id].img='';
+  markDirty();renderAll();selectNode(id);toast('图片已移除');
 }
 function showLightbox(src){
   document.getElementById('lightbox-img').src=src;
@@ -704,7 +715,8 @@ document.getElementById('note-input').addEventListener('keydown',e=>{if(e.key===
 function showCtx(e,id){
   ctxId=id;selectNode(id);
   // show/hide "remove image" option
-  document.getElementById('ctx-del-img').style.display=nodeMap[id]?.img?'flex':'none';
+  const _hasImg=!!(nodeMap[id]&&nodeMap[id].img);
+  document.getElementById('ctx-del-img').style.display=_hasImg?'flex':'none';
   const m=document.getElementById('ctx');
   let lx=e.clientX,ly=e.clientY;
   if(lx+170>window.innerWidth)lx=window.innerWidth-174;
